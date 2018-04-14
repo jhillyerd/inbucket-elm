@@ -1,6 +1,7 @@
 module Data.MessageHeader exposing (..)
 
 import Json.Decode as Decode exposing (..)
+import Json.Decode.Pipeline exposing (..)
 
 
 type alias MessageHeader =
@@ -17,13 +18,12 @@ type alias MessageHeader =
 
 decoder : Decoder MessageHeader
 decoder =
-    map8
-        MessageHeader
-        (field "mailbox" string)
-        (field "id" string)
-        (field "from" string)
-        (field "to" (list string))
-        (field "subject" string)
-        (field "date" string)
-        (field "size" int)
-        (field "seen" bool)
+    decode MessageHeader
+        |> required "mailbox" string
+        |> required "id" string
+        |> optional "from" string ""
+        |> required "to" (list string)
+        |> optional "subject" string ""
+        |> required "date" string
+        |> required "size" int
+        |> required "seen" bool
