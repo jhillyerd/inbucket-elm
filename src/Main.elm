@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Data.Message as Message exposing (Message)
 import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Html exposing (..)
 import Html.Attributes exposing (placeholder, type_, style)
@@ -13,19 +14,15 @@ inbucketBase =
     "http://192.168.1.10:9000"
 
 
-main =
-    Html.program
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
+
+-- MODEL --
 
 
 type alias Model =
     { flash : String
     , mailboxName : String
     , mailbox : Maybe Mailbox
+    , message : Maybe Message
     }
 
 
@@ -43,6 +40,7 @@ init =
             { flash = ""
             , mailboxName = ""
             , mailbox = Nothing
+            , message = Nothing
             }
     in
         ( model, Cmd.none )
@@ -50,14 +48,19 @@ init =
 
 type Msg
     = MailboxNameInput String
-    | ClickViewMailbox
-    | ClickViewMessage MessageHeader
+    | ViewMailbox
+    | SelectMessage MessageHeader
     | NewMailbox (Result Http.Error (List MessageHeader))
+    | NewMessage (Result Http.Error Message)
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
+
+
+
+-- UPDATE --
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -66,22 +69,30 @@ update msg model =
         MailboxNameInput name ->
             ( { model | mailboxName = name }, Cmd.none )
 
-        ClickViewMailbox ->
+        ViewMailbox ->
             ( model, getMailbox model.mailboxName )
 
-        ClickViewMessage msg ->
+        SelectMessage msg ->
             case model.mailbox of
                 Just mailbox ->
-                    ( { model | mailbox = Just { mailbox | selected = Just msg } }, Cmd.none )
+                    ( { model | mailbox = Just { mailbox | selected = Just msg } }
+                    , getMessage msg
+                    )
 
                 Nothing ->
                     ( model, Cmd.none )
 
+        NewMailbox (Ok headers) ->
+            ( { model | mailbox = Just (Mailbox model.mailboxName headers Nothing) }, Cmd.none )
+
         NewMailbox (Err err) ->
             ( { model | flash = httpErrorString (err) }, Cmd.none )
 
-        NewMailbox (Ok result) ->
-            ( { model | mailbox = Just (Mailbox model.mailboxName result Nothing) }, Cmd.none )
+        NewMessage (Ok msg) ->
+            ( { model | message = Just msg }, Cmd.none )
+
+        NewMessage (Err err) ->
+            ( { model | flash = httpErrorString (err) }, Cmd.none )
 
 
 getMailbox : String -> Cmd Msg
@@ -96,9 +107,25 @@ getMailbox name =
         Http.send NewMailbox request
 
 
+getMessage : MessageHeader -> Cmd Msg
+getMessage msg =
+    let
+        url =
+            inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
+
+        request =
+            Http.get url Message.decoder
+    in
+        Http.send NewMessage request
+
+
 decodeMailbox : Decoder (List MessageHeader)
 decodeMailbox =
     list MessageHeader.decoder
+
+
+
+-- VIEW --
 
 
 view : Model -> Html Msg
@@ -106,15 +133,16 @@ view model =
     div []
         [ div [] [ text ("Status: " ++ model.flash) ]
         , div [] [ viewMailboxInput model ]
+        , div [] [ viewMessage model ]
         ]
 
 
 viewMailboxInput : Model -> Html Msg
 viewMailboxInput model =
     div []
-        [ form [ onSubmit ClickViewMailbox ]
+        [ form [ onSubmit ViewMailbox ]
             [ input [ type_ "text", placeholder "mailbox", onInput MailboxNameInput ] []
-            , button [ onClick ClickViewMailbox ] [ text "View" ]
+            , button [ onClick ViewMailbox ] [ text "View" ]
             , viewMailbox model
             ]
         ]
@@ -127,11 +155,11 @@ viewMailbox model =
             div [] [ text "Empty" ]
 
         Just mailbox ->
-            div [] (List.map (viewMessage mailbox) (List.reverse mailbox.headers))
+            div [] (List.map (viewHeader mailbox) (List.reverse mailbox.headers))
 
 
-viewMessage : Mailbox -> MessageHeader -> Html Msg
-viewMessage mailbox msg =
+viewHeader : Mailbox -> MessageHeader -> Html Msg
+viewHeader mailbox msg =
     let
         styles =
             if mailbox.selected == Just msg then
@@ -140,11 +168,21 @@ viewMessage mailbox msg =
                 []
     in
         div
-            [ onClick (ClickViewMessage msg), style styles ]
+            [ onClick (SelectMessage msg), style styles ]
             [ div [] [ text msg.subject ]
             , div [] [ text msg.from ]
             , div [] [ text msg.date ]
             ]
+
+
+viewMessage : Model -> Html Msg
+viewMessage model =
+    case model.message of
+        Just message ->
+            text message.body.text
+
+        Nothing ->
+            text ""
 
 
 httpErrorString : Http.Error -> String
@@ -165,3 +203,17 @@ httpErrorString error =
 
             Http.BadPayload msg _ ->
                 "bad payload: " ++ msg
+
+
+
+-- MAIN --
+
+
+main : Program Never Model Msg
+main =
+    Html.program
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
