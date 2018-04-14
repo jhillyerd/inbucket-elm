@@ -1,5 +1,6 @@
 module Main exposing (..)
 
+import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Html exposing (..)
 import Html.Attributes exposing (placeholder, type_, style)
 import Html.Events exposing (..)
@@ -19,18 +20,6 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
-
-
-type alias MessageHeader =
-    { mailbox : String
-    , id : String
-    , from : String
-    , to : List String
-    , subject : String
-    , date : String
-    , size : Int
-    , seen : Bool
-    }
 
 
 type alias Model =
@@ -109,18 +98,7 @@ getMailbox name =
 
 decodeMailbox : Decoder (List MessageHeader)
 decodeMailbox =
-    list
-        (map8
-            MessageHeader
-            (field "mailbox" string)
-            (field "id" string)
-            (field "from" string)
-            (field "to" (list string))
-            (field "subject" string)
-            (field "date" string)
-            (field "size" int)
-            (field "seen" bool)
-        )
+    list MessageHeader.decoder
 
 
 view : Model -> Html Msg
