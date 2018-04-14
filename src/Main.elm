@@ -3,10 +3,10 @@ module Main exposing (..)
 import Data.Message as Message exposing (Message)
 import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Html exposing (..)
-import Html.Attributes exposing (placeholder, type_, style)
+import Html.Attributes exposing (id, class, href, placeholder, type_, style, rel, value)
 import Html.Events exposing (..)
 import Http exposing (Error)
-import Json.Decode exposing (..)
+import Json.Decode as Decode exposing (Decoder)
 
 
 inbucketBase : String
@@ -38,7 +38,7 @@ init =
     let
         model =
             { flash = ""
-            , mailboxName = ""
+            , mailboxName = "swaks"
             , mailbox = Nothing
             , message = Nothing
             }
@@ -121,7 +121,7 @@ getMessage msg =
 
 decodeMailbox : Decoder (List MessageHeader)
 decodeMailbox =
-    list MessageHeader.decoder
+    Decode.list MessageHeader.decoder
 
 
 
@@ -130,10 +130,22 @@ decodeMailbox =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ div [] [ text ("Status: " ++ model.flash) ]
-        , div [] [ viewMailboxInput model ]
-        , div [] [ viewMessage model ]
+    div [ id "app" ]
+        [ node "link" [ rel "stylesheet", href "/inbucket.css" ] []
+        , header []
+            [ div [] [ viewMailboxInput model ]
+            , div [] [ text ("Status: " ++ model.flash) ]
+            ]
+        , aside [ id "mailbox" ] [ viewMailbox model ]
+        , main_ [ id "message" ] [ viewMessage model ]
+        , footer []
+            [ div [ id "footer" ]
+                [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
+                , text " is an open source projected hosted at "
+                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
+                , text "."
+                ]
+            ]
         ]
 
 
@@ -141,9 +153,14 @@ viewMailboxInput : Model -> Html Msg
 viewMailboxInput model =
     div []
         [ form [ onSubmit ViewMailbox ]
-            [ input [ type_ "text", placeholder "mailbox", onInput MailboxNameInput ] []
+            [ input
+                [ type_ "text"
+                , placeholder "mailbox"
+                , value model.mailboxName
+                , onInput MailboxNameInput
+                ]
+                []
             , button [ onClick ViewMailbox ] [ text "View" ]
-            , viewMailbox model
             ]
         ]
 
