@@ -11,7 +11,7 @@ import Json.Decode as Decode exposing (Decoder)
 
 inbucketBase : String
 inbucketBase =
-    "http://192.168.1.10:9000"
+    ""
 
 
 
@@ -87,8 +87,9 @@ update msg model =
         DeleteMessage msg ->
             ( model, deleteMessage msg )
 
-        DeleteMessageResult (Ok _) ->
-            ( model, Cmd.none )
+        DeleteMessageResult (Ok msg) ->
+            -- TODO Inefficient
+            ( { model | message = Nothing }, getMailbox model.mailboxName )
 
         DeleteMessageResult (Err err) ->
             ( { model | flash = httpErrorString (err) }, Cmd.none )
