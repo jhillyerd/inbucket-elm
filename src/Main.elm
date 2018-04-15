@@ -119,19 +119,6 @@ getMailbox name =
         Http.send NewMailbox request
 
 
-httpDelete : String -> a -> Http.Request a
-httpDelete url msg =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = url
-        , body = Http.emptyBody
-        , expect = Http.expectStringResponse (\_ -> Ok msg)
-        , timeout = Nothing
-        , withCredentials = False
-        }
-
-
 deleteMessage : Message -> Cmd Msg
 deleteMessage msg =
     let
@@ -265,26 +252,6 @@ viewMessage model =
             text ""
 
 
-httpErrorString : Http.Error -> String
-httpErrorString error =
-    "HTTP: "
-        ++ case error of
-            Http.BadUrl str ->
-                "bad URL: " ++ str
-
-            Http.Timeout ->
-                "timeout"
-
-            Http.NetworkError ->
-                "network error"
-
-            Http.BadStatus res ->
-                "bad status: " ++ (toString res.status.code)
-
-            Http.BadPayload msg _ ->
-                "bad payload: " ++ msg
-
-
 
 -- MAIN --
 
@@ -301,6 +268,42 @@ main =
 
 
 -- UTILS --
+
+
+httpDelete : String -> a -> Http.Request a
+httpDelete url msg =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectStringResponse (\_ -> Ok msg)
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+httpErrorString : Http.Error -> String
+httpErrorString error =
+    case error of
+        Http.BadUrl str ->
+            "Bad URL: " ++ str
+
+        Http.Timeout ->
+            "HTTP timeout"
+
+        Http.NetworkError ->
+            "HTTP Network error"
+
+        Http.BadStatus res ->
+            "Bad HTTP status: " ++ toString res.status.code
+
+        Http.BadPayload msg res ->
+            "Bad HTTP payload: "
+                ++ msg
+                ++ " ("
+                ++ toString res.status.code
+                ++ ")"
 
 
 tupleToMaybe : ( String, Bool ) -> Maybe String
