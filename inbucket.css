@@ -1,3 +1,13 @@
+/** APP */
+
+:root {
+  --primary-color: #333;
+  --low-color: #666;
+  --high-color: #337ab7;
+  --border-color: #ddd;
+  --selected-color: #eee;
+}
+
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -7,8 +17,8 @@ b, u, i, center,
 dl, dt, dd, ol, ul, li,
 fieldset, form, label, legend,
 table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed, 
-figure, figcaption, footer, header, hgroup, 
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
 menu, nav, output, ruby, section, summary,
 time, mark, audio, video {
   margin: 0;
@@ -27,7 +37,7 @@ body, div, table {
   font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
   font-size: 14px;
   line-height: 1.43;
-  color: #333;
+  color: var(--primary-color);
 }
 
 #app {
@@ -47,7 +57,7 @@ body, div, table {
     justify-content: inherit;
     grid-template-columns:
       minmax(20px, auto)
-      minmax(200px, 350px)
+      minmax(200px, 300px)
       minmax(650px, 1000px)
       minmax(20px, auto);
     grid-template-areas:
@@ -64,14 +74,6 @@ header {
   grid-area: head;
 }
 
-#mailbox {
-  grid-area: mbox;
-}
-
-#message {
-  grid-area: mesg;
-}
-
 footer {
   background-color: #eee;
   display: flex;
@@ -81,4 +83,81 @@ footer {
 
 #footer {
   margin: 10px auto;
+}
+
+/** MAILBOX */
+
+#mailbox {
+  grid-area: mbox;
+}
+
+.mailbox-entry {
+  border-color: var(--border-color);
+  border-width: 1px;
+  border-style: none solid solid solid;
+  cursor: pointer;
+  padding: 5px 8px;
+}
+
+.mailbox-entry.selected {
+  background-color: var(--selected-color);
+}
+
+.mailbox-entry:first-child {
+  border-style: solid;
+}
+
+.mailbox-entry .subject {
+  color: var(--high-color);
+}
+
+.mailbox-entry.unseen .subject {
+  font-weight: bold;
+}
+
+.mailbox-entry .from,
+.mailbox-entry .date {
+  color: var(--low-color);
+  font-size: 85%;
+}
+
+
+/** MESSAGE */
+
+#message {
+  grid-area: mesg;
+}
+
+#message-header {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+#message-header dt {
+  color: var(--low-color);
+  font-weight: bold;
+}
+
+#message-header dd {
+  color: var(--low-color);
+  padding-left: 10px;
+}
+
+@media (min-width: 1000px) {
+  #message-header {
+    display: grid;
+    grid-template: auto / 5em 1fr;
+  }
+
+  #message-header dt {
+    grid-column: 1;
+    text-align: right;
+  }
+
+  #message-header dd {
+    grid-column: 2;
+  }
 }

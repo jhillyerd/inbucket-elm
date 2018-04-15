@@ -178,17 +178,26 @@ viewMailbox model =
 viewHeader : Mailbox -> MessageHeader -> Html Msg
 viewHeader mailbox msg =
     let
-        styles =
+        base =
+            "mailbox-entry"
+
+        selected =
             if mailbox.selected == Just msg then
-                [ ( "background", "#ccc" ) ]
+                base ++ " selected"
             else
-                []
+                base
+
+        unseen =
+            if msg.seen then
+                selected
+            else
+                selected ++ " unseen"
     in
         div
-            [ onClick (SelectMessage msg), style styles ]
-            [ div [] [ text msg.subject ]
-            , div [] [ text msg.from ]
-            , div [] [ text msg.date ]
+            [ class unseen, onClick (SelectMessage msg) ]
+            [ div [ class "subject" ] [ text msg.subject ]
+            , div [ class "from" ] [ text msg.from ]
+            , div [ class "date" ] [ text msg.date ]
             ]
 
 
@@ -196,7 +205,19 @@ viewMessage : Model -> Html Msg
 viewMessage model =
     case model.message of
         Just message ->
-            text message.body.text
+            div []
+                [ dl [ id "message-header" ]
+                    [ dt [] [ text "From:" ]
+                    , dd [] [ text message.from ]
+                    , dt [] [ text "To:" ]
+                    , dd [] (List.map text message.to)
+                    , dt [] [ text "Date:" ]
+                    , dd [] [ text message.date ]
+                    , dt [] [ text "Subject:" ]
+                    , dd [] [ text message.subject ]
+                    ]
+                , article [] [ text message.body.text ]
+                ]
 
         Nothing ->
             text ""
