@@ -3,7 +3,7 @@ module Main exposing (..)
 import Data.Message as Message exposing (Message)
 import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Html exposing (..)
-import Html.Attributes exposing (id, class, href, placeholder, type_, style, rel, value)
+import Html.Attributes exposing (class, href, id, placeholder, rel, style, target, type_, value)
 import Html.Events exposing (..)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
@@ -50,6 +50,8 @@ type Msg
     = MailboxNameInput String
     | ViewMailbox
     | SelectMessage MessageHeader
+    | DeleteMessage Message
+    | DeleteMessageResult (Result Http.Error Message)
     | NewMailbox (Result Http.Error (List MessageHeader))
     | NewMessage (Result Http.Error Message)
 
@@ -82,6 +84,15 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        DeleteMessage msg ->
+            ( model, deleteMessage msg )
+
+        DeleteMessageResult (Ok _) ->
+            ( model, Cmd.none )
+
+        DeleteMessageResult (Err err) ->
+            ( { model | flash = httpErrorString (err) }, Cmd.none )
+
         NewMailbox (Ok headers) ->
             ( { model | mailbox = Just (Mailbox model.mailboxName headers Nothing) }, Cmd.none )
 
@@ -105,6 +116,31 @@ getMailbox name =
             Http.get url decodeMailbox
     in
         Http.send NewMailbox request
+
+
+httpDelete : String -> a -> Http.Request a
+httpDelete url msg =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectStringResponse (\_ -> Ok msg)
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+deleteMessage : Message -> Cmd Msg
+deleteMessage msg =
+    let
+        url =
+            inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
+
+        request =
+            httpDelete url msg
+    in
+        Http.send DeleteMessageResult request
 
 
 getMessage : MessageHeader -> Cmd Msg
@@ -177,28 +213,18 @@ viewMailbox model =
 
 viewHeader : Mailbox -> MessageHeader -> Html Msg
 viewHeader mailbox msg =
-    let
-        base =
-            "mailbox-entry"
-
-        selected =
-            if mailbox.selected == Just msg then
-                base ++ " selected"
-            else
-                base
-
-        unseen =
-            if msg.seen then
-                selected
-            else
-                selected ++ " unseen"
-    in
-        div
-            [ class unseen, onClick (SelectMessage msg) ]
-            [ div [ class "subject" ] [ text msg.subject ]
-            , div [ class "from" ] [ text msg.from ]
-            , div [ class "date" ] [ text msg.date ]
+    div
+        [ classes
+            [ ( "mailbox-entry", True )
+            , ( "selected", mailbox.selected == Just msg )
+            , ( "unseen", not msg.seen )
             ]
+        , onClick (SelectMessage msg)
+        ]
+        [ div [ class "subject" ] [ text msg.subject ]
+        , div [ class "from" ] [ text msg.from ]
+        , div [ class "date" ] [ text msg.date ]
+        ]
 
 
 viewMessage : Model -> Html Msg
@@ -207,8 +233,19 @@ viewMessage model =
         Just message ->
             div []
                 [ div [ class "button-bar" ]
-                    [ button [ class "danger" ] [ text "Delete" ]
-                    , button [] [ text "Source" ]
+                    [ button [ class "danger", onClick (DeleteMessage message) ] [ text "Delete" ]
+                    , a
+                        [ href
+                            (inbucketBase
+                                ++ "/mailbox/"
+                                ++ message.mailbox
+                                ++ "/"
+                                ++ message.id
+                                ++ "/source"
+                            )
+                        , target "_blank"
+                        ]
+                        [ button [] [ text "Source" ] ]
                     ]
                 , dl [ id "message-header" ]
                     [ dt [] [ text "From:" ]
@@ -259,3 +296,20 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
+
+
+
+-- UTILS --
+
+
+tupleToMaybe : ( String, Bool ) -> Maybe String
+tupleToMaybe ( string, bool ) =
+    if bool then
+        Just string
+    else
+        Nothing
+
+
+classes : List ( String, Bool ) -> Attribute msg
+classes list =
+    list |> List.filterMap tupleToMaybe |> String.join " " |> class
