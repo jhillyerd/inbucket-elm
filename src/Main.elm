@@ -206,7 +206,11 @@ viewMessage model =
     case model.message of
         Just message ->
             div []
-                [ dl [ id "message-header" ]
+                [ div [ class "button-bar" ]
+                    [ button [ class "danger" ] [ text "Delete" ]
+                    , button [] [ text "Source" ]
+                    ]
+                , dl [ id "message-header" ]
                     [ dt [] [ text "From:" ]
                     , dd [] [ text message.from ]
                     , dt [] [ text "To:" ]
