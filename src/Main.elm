@@ -7,6 +7,8 @@ import Html.Attributes exposing (class, classList, href, id, placeholder, rel, s
 import Html.Events exposing (..)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
+import Navigation exposing (Location)
+import Route exposing (Route)
 
 
 inbucketBase : String
@@ -19,7 +21,8 @@ inbucketBase =
 
 
 type alias Model =
-    { flash : String
+    { route : Route
+    , flash : String
     , mailboxName : String
     , mailbox : Maybe Mailbox
     , message : Maybe Message
@@ -33,21 +36,9 @@ type alias Mailbox =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    let
-        model =
-            { flash = ""
-            , mailboxName = "swaks"
-            , mailbox = Nothing
-            , message = Nothing
-            }
-    in
-        ( model, Cmd.none )
-
-
 type Msg
-    = MailboxNameInput String
+    = NewRoute Route
+    | MailboxNameInput String
     | ViewMailbox
     | SelectMessage MessageHeader
     | DeleteMessage Message
@@ -68,6 +59,20 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NewRoute (Route.Unknown hash) ->
+            ( { model | flash = "Unknown route requested: " ++ hash }, Cmd.none )
+
+        NewRoute (Route.Mailbox name) ->
+            ( { model
+                | route = Route.Mailbox name
+                , mailboxName = name
+              }
+            , getMailbox name
+            )
+
+        NewRoute Route.Home ->
+            ( { model | route = Route.Home }, Cmd.none )
+
         MailboxNameInput name ->
             ( { model | mailboxName = name }, Cmd.none )
 
@@ -169,13 +174,11 @@ decodeMailbox =
 view : Model -> Html Msg
 view model =
     div [ id "app" ]
-        [ node "link" [ rel "stylesheet", href "/inbucket.css" ] []
-        , header []
+        [ header []
             [ div [] [ viewMailboxInput model ]
             , div [] [ text ("Status: " ++ model.flash) ]
             ]
-        , aside [ id "mailbox" ] [ viewMailbox model ]
-        , main_ [ id "message" ] [ viewMessage model ]
+        , page model
         , footer []
             [ div [ id "footer" ]
                 [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
@@ -184,6 +187,32 @@ view model =
                 , text "."
                 ]
             ]
+        ]
+
+
+page : Model -> Html Msg
+page model =
+    case model.route of
+        Route.Unknown _ ->
+            pageHome model
+
+        Route.Home ->
+            pageHome model
+
+        Route.Mailbox name ->
+            pageMailbox model
+
+
+pageHome : Model -> Html Msg
+pageHome model =
+    div [ id "page" ] [ text "Hello world" ]
+
+
+pageMailbox : Model -> Html Msg
+pageMailbox model =
+    div [ id "page", class "mailbox" ]
+        [ aside [ id "message-list" ] [ viewMailbox model ]
+        , main_ [ id "message" ] [ viewMessage model ]
         ]
 
 
@@ -217,7 +246,7 @@ viewHeader : Mailbox -> MessageHeader -> Html Msg
 viewHeader mailbox msg =
     div
         [ classList
-            [ ( "mailbox-entry", True )
+            [ ( "message-list-entry", True )
             , ( "selected", mailbox.selected == Just msg )
             , ( "unseen", not msg.seen )
             ]
@@ -272,12 +301,32 @@ viewMessage model =
 
 main : Program Never Model Msg
 main =
-    Html.program
+    Navigation.program (Route.fromLocation >> NewRoute)
         { init = init
         , view = view
         , update = update
         , subscriptions = subscriptions
         }
+
+
+init : Location -> ( Model, Cmd Msg )
+init location =
+    let
+        model =
+            { route = Route.Home
+            , flash = ""
+            , mailboxName = ""
+            , mailbox = Nothing
+            , message = Nothing
+            }
+
+        route =
+            Route.fromLocation location
+    in
+        if route /= model.route then
+            update (NewRoute route) model
+        else
+            ( model, Cmd.none )
 
 
 

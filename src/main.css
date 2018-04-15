@@ -44,34 +44,29 @@ body, table {
   display: grid;
   justify-content: center;
   grid-gap: 20px;
-  grid-template-areas:
-    "head"
-    "mbox"
-    "mesg"
-    "foot";
-  margin: 0 20px;
+  grid-template:
+    "head head head" auto
+    "lpad page rpad" 1fr
+    "foot foot foot" auto / 1px 1fr 1px;
 }
 
 @media (min-width: 1000px) {
   #app {
-    justify-content: inherit;
-    grid-template-columns:
-      minmax(20px, auto)
-      minmax(200px, 300px)
-      minmax(650px, 1000px)
-      minmax(20px, auto);
-    grid-template-areas:
-      "head head head head"
-      "lpad mbox mesg rpad"
-      "foot foot foot foot";
-    grid-template-rows: auto 1fr auto;
+    justify-content: center;
+    grid-template:
+      "head head head" auto
+      "lpad page rpad" 1fr
+      "foot foot foot" auto / minmax(20px, auto) 1fr minmax(20px, auto);
     height: 100vh;
-    margin: 0;
   }
 }
 
 header {
   grid-area: head;
+}
+
+#page {
+  grid-area: page;
 }
 
 footer {
@@ -112,11 +107,32 @@ footer {
 
 /** MAILBOX */
 
-#mailbox {
-  grid-area: mbox;
+.mailbox {
+  display: grid;
+  grid-area: page;
+  grid-gap: 20px;
+  grid-template-areas:
+    "list"
+    "mesg";
+  justify-self: center;
 }
 
-.mailbox-entry {
+@media (min-width: 1000px) {
+  .mailbox {
+    grid-template-columns:
+      minmax(200px, 300px)
+      minmax(650px, 1000px);
+    grid-template-areas:
+      "list mesg";
+    grid-template-rows: 1fr;
+  }
+}
+
+#message-list {
+  grid-area: list;
+}
+
+.message-list-entry {
   border-color: var(--border-color);
   border-width: 1px;
   border-style: none solid solid solid;
@@ -124,24 +140,24 @@ footer {
   padding: 5px 8px;
 }
 
-.mailbox-entry.selected {
+.message-list-entry.selected {
   background-color: var(--selected-color);
 }
 
-.mailbox-entry:first-child {
+.message-list-entry:first-child {
   border-style: solid;
 }
 
-.mailbox-entry .subject {
+.message-list-entry .subject {
   color: var(--high-color);
 }
 
-.mailbox-entry.unseen .subject {
+.message-list-entry.unseen .subject {
   font-weight: bold;
 }
 
-.mailbox-entry .from,
-.mailbox-entry .date {
+.message-list-entry .from,
+.message-list-entry .date {
   color: var(--low-color);
   font-size: 85%;
 }
