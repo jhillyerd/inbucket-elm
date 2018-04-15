@@ -3,7 +3,7 @@ module Main exposing (..)
 import Data.Message as Message exposing (Message)
 import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Html exposing (..)
-import Html.Attributes exposing (class, href, id, placeholder, rel, style, target, type_, value)
+import Html.Attributes exposing (class, classList, href, id, placeholder, rel, style, target, type_, value)
 import Html.Events exposing (..)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
@@ -202,7 +202,7 @@ viewMailbox model =
 viewHeader : Mailbox -> MessageHeader -> Html Msg
 viewHeader mailbox msg =
     div
-        [ classes
+        [ classList
             [ ( "mailbox-entry", True )
             , ( "selected", mailbox.selected == Just msg )
             , ( "unseen", not msg.seen )
@@ -304,16 +304,3 @@ httpErrorString error =
                 ++ " ("
                 ++ toString res.status.code
                 ++ ")"
-
-
-tupleToMaybe : ( String, Bool ) -> Maybe String
-tupleToMaybe ( string, bool ) =
-    if bool then
-        Just string
-    else
-        Nothing
-
-
-classes : List ( String, Bool ) -> Attribute msg
-classes list =
-    list |> List.filterMap tupleToMaybe |> String.join " " |> class
