@@ -51,7 +51,7 @@ type Msg
     | ViewMailbox
     | SelectMessage MessageHeader
     | DeleteMessage Message
-    | DeleteMessageResult (Result Http.Error Message)
+    | DeleteMessageResult (Result Http.Error ())
     | NewMailbox (Result Http.Error (List MessageHeader))
     | NewMessage (Result Http.Error Message)
 
@@ -85,11 +85,10 @@ update msg model =
                     ( model, Cmd.none )
 
         DeleteMessage msg ->
-            ( model, deleteMessage msg )
+            deleteMessage model msg
 
-        DeleteMessageResult (Ok msg) ->
-            -- TODO Inefficient
-            ( { model | message = Nothing }, getMailbox model.mailboxName )
+        DeleteMessageResult (Ok _) ->
+            ( model, Cmd.none )
 
         DeleteMessageResult (Err err) ->
             ( { model | flash = httpErrorString (err) }, Cmd.none )
@@ -112,23 +111,38 @@ getMailbox name =
     let
         url =
             inbucketBase ++ "/api/v1/mailbox/" ++ name
-
-        request =
-            Http.get url decodeMailbox
     in
-        Http.send NewMailbox request
+        Http.send NewMailbox (Http.get url decodeMailbox)
 
 
-deleteMessage : Message -> Cmd Msg
-deleteMessage msg =
+deleteMessage : Model -> Message -> ( Model, Cmd Msg )
+deleteMessage ({ mailbox } as model) msg =
     let
         url =
             inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
 
         request =
-            httpDelete url msg
+            httpDelete url
+
+        cmd =
+            Http.send DeleteMessageResult request
     in
-        Http.send DeleteMessageResult request
+        case mailbox of
+            Nothing ->
+                ( { model | message = Nothing }, cmd )
+
+            Just mb ->
+                ( { model
+                    | message = Nothing
+                    , mailbox =
+                        Just
+                            { mb
+                                | selected = Nothing
+                                , headers = List.filter (\x -> x.id /= msg.id) mb.headers
+                            }
+                  }
+                , cmd
+                )
 
 
 getMessage : MessageHeader -> Cmd Msg
@@ -270,14 +284,14 @@ main =
 -- UTILS --
 
 
-httpDelete : String -> a -> Http.Request a
-httpDelete url msg =
+httpDelete : String -> Http.Request ()
+httpDelete url =
     Http.request
         { method = "DELETE"
         , headers = []
         , url = url
         , body = Http.emptyBody
-        , expect = Http.expectStringResponse (\_ -> Ok msg)
+        , expect = Http.expectStringResponse (\_ -> Ok ())
         , timeout = Nothing
         , withCredentials = False
         }
