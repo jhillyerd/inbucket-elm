@@ -59,19 +59,8 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NewRoute (Route.Unknown hash) ->
-            ( { model | flash = "Unknown route requested: " ++ hash }, Cmd.none )
-
-        NewRoute (Route.Mailbox name) ->
-            ( { model
-                | route = Route.Mailbox name
-                , mailboxName = name
-              }
-            , getMailbox name
-            )
-
-        NewRoute Route.Home ->
-            ( { model | route = Route.Home }, Cmd.none )
+        NewRoute route ->
+            updateRoute route model
 
         MailboxNameInput name ->
             ( { model | mailboxName = name }, Cmd.none )
@@ -109,6 +98,24 @@ update msg model =
 
         NewMessage (Err err) ->
             ( { model | flash = httpErrorString (err) }, Cmd.none )
+
+
+updateRoute : Route -> Model -> ( Model, Cmd Msg )
+updateRoute route model =
+    case route of
+        Route.Unknown hash ->
+            ( { model | flash = "Unknown route requested: " ++ hash }, Cmd.none )
+
+        Route.Mailbox name ->
+            ( { model
+                | route = Route.Mailbox name
+                , mailboxName = name
+              }
+            , getMailbox name
+            )
+
+        Route.Home ->
+            ( { model | route = Route.Home }, Cmd.none )
 
 
 getMailbox : String -> Cmd Msg
@@ -324,7 +331,7 @@ init location =
             Route.fromLocation location
     in
         if route /= model.route then
-            update (NewRoute route) model
+            updateRoute route model
         else
             ( model, Cmd.none )
 
