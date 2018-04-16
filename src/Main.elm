@@ -15,6 +15,7 @@ import Navigation exposing (Location)
 import Page.Home as Home
 import Page.Mailbox as Mailbox
 import Route exposing (Route)
+import Data.Session as Session exposing (Session)
 
 
 inbucketBase : String
@@ -28,7 +29,7 @@ inbucketBase =
 
 type alias Model =
     { route : Route
-    , flash : String
+    , session : Session
     , mailboxName : String
     , home : Home.Model
     , mailbox : Mailbox.Model
@@ -38,19 +39,22 @@ type alias Model =
 init : Location -> ( Model, Cmd Msg )
 init location =
     let
+        session =
+            Session.init
+
         model =
             { route = Route.Home
-            , flash = ""
+            , session = session
             , mailboxName = ""
-            , home = Home.init
-            , mailbox = Mailbox.init
+            , home = Home.init session
+            , mailbox = Mailbox.init session
             }
 
         route =
             Route.fromLocation location
     in
         if route /= model.route then
-            updateRoute route model
+            applySession (updateRoute route model)
         else
             ( model, Cmd.none )
 
@@ -73,33 +77,35 @@ subscriptions model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        NewRoute route ->
-            updateRoute route model
+    applySession
+        (case msg of
+            NewRoute route ->
+                updateRoute route model
 
-        MailboxNameInput name ->
-            ( { model | mailboxName = name }, Cmd.none )
+            MailboxNameInput name ->
+                ( { model | mailboxName = name }, Cmd.none, Session.None )
 
-        HomeMsg subMsg ->
-            let
-                ( subModel, subCmd ) =
-                    Home.update subMsg model.home
-            in
-                ( { model | home = subModel }, Cmd.map HomeMsg subCmd )
+            HomeMsg subMsg ->
+                let
+                    ( subModel, subCmd, sessionMsg ) =
+                        Home.update model.session subMsg model.home
+                in
+                    ( { model | home = subModel }, Cmd.map HomeMsg subCmd, sessionMsg )
 
-        MailboxMsg subMsg ->
-            let
-                ( subModel, subCmd ) =
-                    Mailbox.update subMsg model.mailbox
-            in
-                ( { model | mailbox = subModel }, Cmd.map MailboxMsg subCmd )
+            MailboxMsg subMsg ->
+                let
+                    ( subModel, subCmd, sessionMsg ) =
+                        Mailbox.update model.session subMsg model.mailbox
+                in
+                    ( { model | mailbox = subModel }, Cmd.map MailboxMsg subCmd, sessionMsg )
+        )
 
 
-updateRoute : Route -> Model -> ( Model, Cmd Msg )
+updateRoute : Route -> Model -> ( Model, Cmd Msg, Session.Msg )
 updateRoute route model =
     case route of
         Route.Unknown hash ->
-            ( { model | flash = "Unknown route requested: " ++ hash }, Cmd.none )
+            ( model, Cmd.none, Session.SetFlash ("Unknown route requested: " ++ hash) )
 
         Route.Mailbox name ->
             ( { model
@@ -107,10 +113,18 @@ updateRoute route model =
                 , mailboxName = name
               }
             , Cmd.map MailboxMsg (Mailbox.load name)
+            , Session.None
             )
 
         _ ->
-            ( { model | route = route }, Cmd.none )
+            ( { model | route = route }, Cmd.none, Session.None )
+
+
+applySession : ( Model, Cmd Msg, Session.Msg ) -> ( Model, Cmd Msg )
+applySession ( model, cmd, sessionMsg ) =
+    ( { model | session = Session.update sessionMsg model.session }
+    , cmd
+    )
 
 
 
@@ -120,7 +134,7 @@ updateRoute route model =
 view : Model -> Html Msg
 view model =
     div [ id "app" ]
-        [ header [] [ div [] [ text ("Status: " ++ model.flash) ] ]
+        [ header [] [ div [] [ text ("Status: " ++ model.session.flash) ] ]
         , page model
         , footer []
             [ div [ id "footer" ]
@@ -137,13 +151,13 @@ page : Model -> Html Msg
 page model =
     case model.route of
         Route.Unknown _ ->
-            Html.map HomeMsg (Home.view model.home)
+            Html.map HomeMsg (Home.view model.session model.home)
 
         Route.Home ->
-            Html.map HomeMsg (Home.view model.home)
+            Html.map HomeMsg (Home.view model.session model.home)
 
         Route.Mailbox name ->
-            Html.map MailboxMsg (Mailbox.view model.mailbox)
+            Html.map MailboxMsg (Mailbox.view model.session model.mailbox)
 
 
 

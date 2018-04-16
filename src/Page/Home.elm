@@ -1,6 +1,7 @@
 module Page.Home exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
+import Data.Session as Session exposing (Session)
 
 
 -- import Html.Attributes exposing (..)
@@ -12,8 +13,8 @@ type alias Model =
     {}
 
 
-init : Model
-init =
+init : Session -> Model
+init session =
     {}
 
 
@@ -25,15 +26,15 @@ type Msg
     = Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    ( model, Cmd.none )
+update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
+update session msg model =
+    ( model, Cmd.none, Session.None )
 
 
 
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Session -> Model -> Html Msg
+view session model =
     div [] [ text "This is the home page" ]

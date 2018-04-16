@@ -2,11 +2,12 @@ module Page.Mailbox exposing (Model, Msg, init, load, update, view)
 
 import Data.Message as Message exposing (Message)
 import Data.MessageHeader as MessageHeader exposing (MessageHeader)
+import Data.Session as Session exposing (Session)
 import Json.Decode as Decode exposing (Decoder)
 import Html exposing (..)
 import Html.Attributes exposing (class, classList, href, id, placeholder, rel, style, target, type_, value)
-import Http exposing (Error)
 import Html.Events exposing (..)
+import Http exposing (Error)
 
 
 inbucketBase : String
@@ -19,16 +20,15 @@ inbucketBase =
 
 
 type alias Model =
-    { flash : String
-    , headers : List MessageHeader
+    { headers : List MessageHeader
     , selected : Maybe MessageHeader
     , message : Maybe Message
     }
 
 
-init : Model
-init =
-    Model "" [] Nothing Nothing
+init : Session -> Model
+init session =
+    Model [] Nothing Nothing
 
 
 load : String -> Cmd Msg
@@ -48,32 +48,32 @@ type Msg
     | NewMessage (Result Http.Error Message)
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
+update session msg model =
     case msg of
         SelectMessage msg ->
-            ( { model | selected = Just msg }, getMessage msg )
+            ( { model | selected = Just msg }, getMessage msg, Session.None )
 
         DeleteMessage msg ->
             deleteMessage model msg
 
         DeleteMessageResult (Ok _) ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, Session.SetFlash "BELETED!" )
 
         DeleteMessageResult (Err err) ->
-            ( { model | flash = httpErrorString (err) }, Cmd.none )
+            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
 
         NewMailbox (Ok headers) ->
-            ( { model | headers = headers }, Cmd.none )
+            ( { model | headers = headers }, Cmd.none, Session.None )
 
         NewMailbox (Err err) ->
-            ( { model | flash = httpErrorString (err) }, Cmd.none )
+            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
 
         NewMessage (Ok msg) ->
-            ( { model | message = Just msg }, Cmd.none )
+            ( { model | message = Just msg }, Cmd.none, Session.None )
 
         NewMessage (Err err) ->
-            ( { model | flash = httpErrorString (err) }, Cmd.none )
+            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
 
 
 getMailbox : String -> Cmd Msg
@@ -90,7 +90,7 @@ decodeMailbox =
     Decode.list MessageHeader.decoder
 
 
-deleteMessage : Model -> Message -> ( Model, Cmd Msg )
+deleteMessage : Model -> Message -> ( Model, Cmd Msg, Session.Msg )
 deleteMessage model msg =
     let
         url =
@@ -108,6 +108,7 @@ deleteMessage model msg =
             , headers = List.filter (\x -> x.id /= msg.id) model.headers
           }
         , cmd
+        , Session.None
         )
 
 
@@ -127,8 +128,8 @@ getMessage msg =
 -- VIEW --
 
 
-view : Model -> Html Msg
-view model =
+view : Session -> Model -> Html Msg
+view session model =
     div [ id "page", class "mailbox" ]
         [ aside [ id "message-list" ] [ viewMailbox model ]
         , main_ [ id "message" ] [ viewMessage model ]
