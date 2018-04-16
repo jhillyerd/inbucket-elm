@@ -8,6 +8,7 @@ import Html.Events exposing (..)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
 import Navigation exposing (Location)
+import Page.Home as Home
 import Route exposing (Route)
 
 
@@ -26,6 +27,7 @@ type alias Model =
     , mailboxName : String
     , mailbox : Maybe Mailbox
     , message : Maybe Message
+    , home : Home.Model
     }
 
 
@@ -45,6 +47,7 @@ type Msg
     | DeleteMessageResult (Result Http.Error ())
     | NewMailbox (Result Http.Error (List MessageHeader))
     | NewMessage (Result Http.Error Message)
+    | HomeMsg Home.Msg
 
 
 subscriptions : Model -> Sub Msg
@@ -99,6 +102,13 @@ update msg model =
         NewMessage (Err err) ->
             ( { model | flash = httpErrorString (err) }, Cmd.none )
 
+        HomeMsg homeMsg ->
+            let
+                ( subModel, subCmd ) =
+                    Home.update homeMsg model.home
+            in
+                ( { model | home = subModel }, Cmd.map HomeMsg subCmd )
+
 
 updateRoute : Route -> Model -> ( Model, Cmd Msg )
 updateRoute route model =
@@ -108,7 +118,7 @@ updateRoute route model =
 
         Route.Mailbox name ->
             ( { model
-                | route = Route.Mailbox name
+                | route = route
                 , mailboxName = name
               }
             , getMailbox name
@@ -201,18 +211,13 @@ page : Model -> Html Msg
 page model =
     case model.route of
         Route.Unknown _ ->
-            pageHome model
+            Html.map HomeMsg (Home.view model.home)
 
         Route.Home ->
-            pageHome model
+            Html.map HomeMsg (Home.view model.home)
 
         Route.Mailbox name ->
             pageMailbox model
-
-
-pageHome : Model -> Html Msg
-pageHome model =
-    div [ id "page" ] [ text "Hello world" ]
 
 
 pageMailbox : Model -> Html Msg
@@ -325,6 +330,7 @@ init location =
             , mailboxName = ""
             , mailbox = Nothing
             , message = Nothing
+            , home = Home.init
             }
 
         route =
