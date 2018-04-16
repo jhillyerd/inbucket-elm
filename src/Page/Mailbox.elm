@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes exposing (class, classList, href, id, placeholder, rel, style, target, type_, value)
 import Html.Events exposing (..)
 import Http exposing (Error)
+import HttpUtil
 
 
 inbucketBase : String
@@ -61,19 +62,19 @@ update session msg model =
             ( model, Cmd.none, Session.SetFlash "BELETED!" )
 
         DeleteMessageResult (Err err) ->
-            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
+            ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         NewMailbox (Ok headers) ->
             ( { model | headers = headers }, Cmd.none, Session.None )
 
         NewMailbox (Err err) ->
-            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
+            ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         NewMessage (Ok msg) ->
             ( { model | message = Just msg }, Cmd.none, Session.None )
 
         NewMessage (Err err) ->
-            ( model, Cmd.none, Session.SetFlash (httpErrorString err) )
+            ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
 
 getMailbox : String -> Cmd Msg
@@ -97,7 +98,7 @@ deleteMessage model msg =
             inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
 
         request =
-            httpDelete url
+            HttpUtil.delete url
 
         cmd =
             Http.send DeleteMessageResult request
@@ -192,43 +193,3 @@ viewMessage model =
 
         Nothing ->
             text ""
-
-
-
--- UTILS --
-
-
-httpDelete : String -> Http.Request ()
-httpDelete url =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = url
-        , body = Http.emptyBody
-        , expect = Http.expectStringResponse (\_ -> Ok ())
-        , timeout = Nothing
-        , withCredentials = False
-        }
-
-
-httpErrorString : Http.Error -> String
-httpErrorString error =
-    case error of
-        Http.BadUrl str ->
-            "Bad URL: " ++ str
-
-        Http.Timeout ->
-            "HTTP timeout"
-
-        Http.NetworkError ->
-            "HTTP Network error"
-
-        Http.BadStatus res ->
-            "Bad HTTP status: " ++ toString res.status.code
-
-        Http.BadPayload msg res ->
-            "Bad HTTP payload: "
-                ++ msg
-                ++ " ("
-                ++ toString res.status.code
-                ++ ")"

@@ -1,27 +1,12 @@
 module Main exposing (..)
 
+import Data.Session as Session exposing (Session)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, href, id, placeholder, rel, style, target, type_, value)
-
-
--- import Html.Events exposing (..)
-
-import Http exposing (Error)
-
-
--- import Json.Decode as Decode exposing (Decoder)
-
+import Html.Attributes exposing (class, href, id, placeholder, type_, value)
 import Navigation exposing (Location)
 import Page.Home as Home
 import Page.Mailbox as Mailbox
 import Route exposing (Route)
-import Data.Session as Session exposing (Session)
-
-
-inbucketBase : String
-inbucketBase =
-    ""
-
 
 
 -- MODEL --
@@ -172,30 +157,3 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
-
-
-
--- UTILS --
-
-
-httpErrorString : Http.Error -> String
-httpErrorString error =
-    case error of
-        Http.BadUrl str ->
-            "Bad URL: " ++ str
-
-        Http.Timeout ->
-            "HTTP timeout"
-
-        Http.NetworkError ->
-            "HTTP Network error"
-
-        Http.BadStatus res ->
-            "Bad HTTP status: " ++ toString res.status.code
-
-        Http.BadPayload msg res ->
-            "Bad HTTP payload: "
-                ++ msg
-                ++ " ("
-                ++ toString res.status.code
-                ++ ")"
