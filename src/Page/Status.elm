@@ -2,9 +2,11 @@ module Page.Status exposing (Model, Msg, init, load, subscriptions, update, view
 
 import Data.Metrics as Metrics exposing (Metrics)
 import Data.Session as Session exposing (Session)
+import Filesize
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http exposing (Error)
+import HttpUtil
 import Time exposing (Time)
 
 
@@ -52,10 +54,10 @@ update session msg model =
             ( { model | metrics = Just metrics }, Cmd.none, Session.None )
 
         NewMetrics (Err err) ->
-            ( model, Cmd.none, Session.None )
+            ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         Tick time ->
-            ( model, getMetrics, Session.SetFlash (toString time) )
+            ( model, getMetrics, Session.ClearFlash )
 
 
 getMetrics : Cmd Msg
@@ -79,25 +81,25 @@ view session model =
             Just metrics ->
                 div []
                     [ framePanel "General Metrics"
-                        [ viewLiveMetric "System Memory" metrics.sysMem
-                        , viewLiveMetric "Heap Size" metrics.heapSize
-                        , viewLiveMetric "Heap In-Use" metrics.heapInUse
-                        , viewLiveMetric "Heap # Objects" metrics.heapObjects
-                        , viewLiveMetric "Goroutines" metrics.goRoutines
-                        , viewLiveMetric "Open WebSockets" metrics.webSockets
+                        [ viewLiveMetric "System Memory" Filesize.format metrics.sysMem
+                        , viewLiveMetric "Heap Size" Filesize.format metrics.heapSize
+                        , viewLiveMetric "Heap In-Use" Filesize.format metrics.heapInUse
+                        , viewLiveMetric "Heap # Objects" fmtInt metrics.heapObjects
+                        , viewLiveMetric "Goroutines" fmtInt metrics.goRoutines
+                        , viewLiveMetric "Open WebSockets" fmtInt metrics.webSockets
                         ]
                     , framePanel "SMTP Metrics"
-                        [ viewLiveMetric "Current Connections" metrics.smtpCurrent
+                        [ viewLiveMetric "Current Connections" fmtInt metrics.smtpCurrent
                         ]
                     ]
         ]
 
 
-viewLiveMetric : String -> Int -> Html a
-viewLiveMetric label value =
+viewLiveMetric : String -> (Int -> String) -> Int -> Html a
+viewLiveMetric label formatter value =
     div [ class "metric" ]
         [ div [ class "label" ] [ text label ]
-        , div [ class "value" ] [ text (toString value) ]
+        , div [ class "value" ] [ text (formatter value) ]
         , div [ class "graph" ] [ text "~magic graph goes here~ (10min)" ]
         ]
 
@@ -108,3 +110,20 @@ framePanel name html =
         [ h2 [] [ text name ]
         , div [ class "metrics" ] html
         ]
+
+
+
+-- UTILS --
+
+
+fmtInt : Int -> String
+fmtInt n =
+    thousands (toString n)
+
+
+thousands : String -> String
+thousands str =
+    if String.length str <= 3 then
+        str
+    else
+        (thousands (String.slice 0 -3 str)) ++ "," ++ (String.right 3 str)
