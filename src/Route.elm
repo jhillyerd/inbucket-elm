@@ -10,6 +10,7 @@ type Route
     = Unknown String
     | Home
     | Mailbox String
+    | Status
 
 
 matcher : Parser (Route -> a) a
@@ -17,6 +18,7 @@ matcher =
     Url.oneOf
         [ Url.map Home (s "")
         , Url.map Mailbox (s "m" </> string)
+        , Url.map Status (s "status")
         ]
 
 
@@ -33,6 +35,9 @@ routeToString page =
 
                 Mailbox name ->
                     [ "m", name ]
+
+                Status ->
+                    [ "status" ]
     in
         "/#/" ++ String.join "/" pieces
 
