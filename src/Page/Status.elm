@@ -1,7 +1,10 @@
-module Page.Status exposing (Model, Msg, init, update, view)
+module Page.Status exposing (Model, Msg, init, load, update, view)
 
-import Html exposing (..)
+import Data.Metrics as Metrics exposing (Metrics)
 import Data.Session as Session exposing (Session)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Http exposing (Error)
 
 
 -- import Html.Attributes exposing (..)
@@ -10,12 +13,17 @@ import Data.Session as Session exposing (Session)
 
 
 type alias Model =
-    {}
+    { metrics : Maybe Metrics }
 
 
 init : Session -> Model
 init session =
-    {}
+    { metrics = Nothing }
+
+
+load : Cmd Msg
+load =
+    getMetrics
 
 
 
@@ -23,12 +31,23 @@ init session =
 
 
 type Msg
-    = Msg
+    = NewMetrics (Result Http.Error Metrics)
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
-    ( model, Cmd.none, Session.None )
+    case msg of
+        NewMetrics (Ok metrics) ->
+            ( { model | metrics = Just metrics }, Cmd.none, Session.None )
+
+        NewMetrics (Err err) ->
+            ( model, Cmd.none, Session.None )
+
+
+getMetrics : Cmd Msg
+getMetrics =
+    Http.get "/debug/vars" Metrics.decoder
+        |> Http.send NewMetrics
 
 
 
@@ -37,4 +56,41 @@ update session msg model =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div [] [ text "This is the status page" ]
+    div [ id "page" ]
+        [ h1 [] [ text "Inbucket Status" ]
+        , case model.metrics of
+            Nothing ->
+                div [] [ text "Loading metrics..." ]
+
+            Just metrics ->
+                div []
+                    [ framePanel "General Metrics"
+                        [ viewLiveMetric "System Memory" metrics.sysMem
+                        , viewLiveMetric "Heap Size" metrics.heapSize
+                        , viewLiveMetric "Heap In-Use" metrics.heapInUse
+                        , viewLiveMetric "Heap # Objects" metrics.heapObjects
+                        , viewLiveMetric "Goroutines" metrics.goRoutines
+                        , viewLiveMetric "Open WebSockets" metrics.webSockets
+                        ]
+                    , framePanel "SMTP Metrics"
+                        [ viewLiveMetric "Current Connections" metrics.smtpCurrent
+                        ]
+                    ]
+        ]
+
+
+viewLiveMetric : String -> Int -> Html a
+viewLiveMetric label value =
+    div [ class "metric" ]
+        [ div [ class "label" ] [ text label ]
+        , div [ class "value" ] [ text (toString value) ]
+        , div [ class "graph" ] [ text "~magic graph goes here~ (10min)" ]
+        ]
+
+
+framePanel : String -> List (Html a) -> Html a
+framePanel name html =
+    div [ class "metric-panel" ]
+        [ h2 [] [ text name ]
+        , div [ class "metrics" ] html
+        ]

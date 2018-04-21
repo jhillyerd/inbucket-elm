@@ -123,6 +123,12 @@ updateRoute route model =
             , Session.None
             )
 
+        Route.Status ->
+            ( { model | route = route }
+            , Cmd.map StatusMsg (Status.load)
+            , Session.None
+            )
+
         _ ->
             -- Handle routes that require no special setup.
             ( { model | route = route }, Cmd.none, Session.None )
