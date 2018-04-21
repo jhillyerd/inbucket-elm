@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromLocation, href, modifyUrl)
+module Route exposing (Route(..), fromLocation, href, modifyUrl, newUrl)
 
 import Html exposing (Attribute)
 import Html.Attributes as Attr
@@ -16,7 +16,7 @@ matcher : Parser (Route -> a) a
 matcher =
     Url.oneOf
         [ Url.map Home (s "")
-        , Url.map Mailbox (s "mailbox" </> string)
+        , Url.map Mailbox (s "m" </> string)
         ]
 
 
@@ -32,9 +32,9 @@ routeToString page =
                     []
 
                 Mailbox name ->
-                    [ "mailbox", name ]
+                    [ "m", name ]
     in
-        "#/" ++ String.join "/" pieces
+        "/#/" ++ String.join "/" pieces
 
 
 
@@ -49,6 +49,11 @@ href route =
 modifyUrl : Route -> Cmd msg
 modifyUrl =
     routeToString >> Navigation.modifyUrl
+
+
+newUrl : Route -> Cmd msg
+newUrl =
+    routeToString >> Navigation.newUrl
 
 
 fromLocation : Location -> Route

@@ -2,7 +2,8 @@ module Main exposing (..)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
-import Html.Attributes exposing (class, href, id, placeholder, type_, value)
+import Html.Attributes exposing (attribute, class, href, id, placeholder, type_, value)
+import Html.Events as Events
 import Navigation exposing (Location)
 import Page.Home as Home
 import Page.Mailbox as Mailbox
@@ -45,8 +46,10 @@ init location =
 
 
 type Msg
-    = NewRoute Route
+    = SetRoute Route
+    | NewRoute Route
     | MailboxNameInput String
+    | ViewMailbox
     | HomeMsg Home.Msg
     | MailboxMsg Mailbox.Msg
 
@@ -64,11 +67,22 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     applySession
         (case msg of
+            SetRoute route ->
+                -- Updates broser URL to requested route.
+                ( model, Route.newUrl route, Session.None )
+
             NewRoute route ->
+                -- Responds to new browser URL.
                 updateRoute route model
 
             MailboxNameInput name ->
                 ( { model | mailboxName = name }, Cmd.none, Session.None )
+
+            ViewMailbox ->
+                ( { model | mailboxName = "" }
+                , Route.newUrl (Route.Mailbox model.mailboxName)
+                , Session.None
+                )
 
             HomeMsg subMsg ->
                 let
@@ -93,15 +107,13 @@ updateRoute route model =
             ( model, Cmd.none, Session.SetFlash ("Unknown route requested: " ++ hash) )
 
         Route.Mailbox name ->
-            ( { model
-                | route = route
-                , mailboxName = name
-              }
+            ( { model | route = route }
             , Cmd.map MailboxMsg (Mailbox.load name)
             , Session.None
             )
 
         _ ->
+            -- Handle routes that require no special setup.
             ( { model | route = route }, Cmd.none, Session.None )
 
 
@@ -119,16 +131,9 @@ applySession ( model, cmd, sessionMsg ) =
 view : Model -> Html Msg
 view model =
     div [ id "app" ]
-        [ header [] [ div [] [ text ("Status: " ++ model.session.flash) ] ]
+        [ viewHeader model
         , page model
-        , footer []
-            [ div [ id "footer" ]
-                [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
-                , text " is an open source projected hosted at "
-                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
-                , text "."
-                ]
-            ]
+        , viewFooter
         ]
 
 
@@ -143,6 +148,39 @@ page model =
 
         Route.Mailbox name ->
             Html.map MailboxMsg (Mailbox.view model.session model.mailbox)
+
+
+viewHeader : Model -> Html Msg
+viewHeader model =
+    header []
+        [ ul [ class "nav", attribute "role" "navigation" ]
+            [ li [] [ a [ Route.href Route.Home ] [ text "Home" ] ]
+            , li []
+                [ form [ Events.onSubmit ViewMailbox ]
+                    [ input
+                        [ type_ "text"
+                        , placeholder "mailbox"
+                        , value model.mailboxName
+                        , Events.onInput MailboxNameInput
+                        ]
+                        []
+                    ]
+                ]
+            ]
+        , div [] [ text ("Status: " ++ model.session.flash) ]
+        ]
+
+
+viewFooter : Html Msg
+viewFooter =
+    footer []
+        [ div [ id "footer" ]
+            [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
+            , text " is an open source projected hosted at "
+            , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
+            , text "."
+            ]
+        ]
 
 
 
