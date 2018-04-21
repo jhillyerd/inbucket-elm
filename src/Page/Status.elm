@@ -1,10 +1,11 @@
-module Page.Status exposing (Model, Msg, init, load, update, view)
+module Page.Status exposing (Model, Msg, init, load, subscriptions, update, view)
 
 import Data.Metrics as Metrics exposing (Metrics)
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http exposing (Error)
+import Time exposing (Time)
 
 
 -- import Html.Attributes exposing (..)
@@ -27,11 +28,21 @@ load =
 
 
 
+-- SUBSCRIPTIONS --
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Time.every (5 * Time.second) Tick
+
+
+
 -- UPDATE --
 
 
 type Msg
     = NewMetrics (Result Http.Error Metrics)
+    | Tick Time
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
@@ -42,6 +53,9 @@ update session msg model =
 
         NewMetrics (Err err) ->
             ( model, Cmd.none, Session.None )
+
+        Tick time ->
+            ( model, getMetrics, Session.SetFlash (toString time) )
 
 
 getMetrics : Cmd Msg

@@ -58,9 +58,18 @@ type Msg
     | StatusMsg Status.Msg
 
 
+
+-- SUBSCRIPTIONS --
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    case model.route of
+        Route.Status ->
+            Sub.map StatusMsg (Status.subscriptions model.status)
+
+        _ ->
+            Sub.none
 
 
 
