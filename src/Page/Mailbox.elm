@@ -59,7 +59,7 @@ update session msg model =
             deleteMessage model msg
 
         DeleteMessageResult (Ok _) ->
-            ( model, Cmd.none, Session.SetFlash "BELETED!" )
+            ( model, Cmd.none, Session.None )
 
         DeleteMessageResult (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
@@ -83,12 +83,8 @@ getMailbox name =
         url =
             inbucketBase ++ "/api/v1/mailbox/" ++ name
     in
-        Http.send NewMailbox (Http.get url decodeMailbox)
-
-
-decodeMailbox : Decoder (List MessageHeader)
-decodeMailbox =
-    Decode.list MessageHeader.decoder
+        Http.get url (Decode.list MessageHeader.decoder)
+            |> Http.send NewMailbox
 
 
 deleteMessage : Model -> Message -> ( Model, Cmd Msg, Session.Msg )
@@ -97,11 +93,9 @@ deleteMessage model msg =
         url =
             inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
 
-        request =
-            HttpUtil.delete url
-
         cmd =
-            Http.send DeleteMessageResult request
+            HttpUtil.delete url
+                |> Http.send DeleteMessageResult
     in
         ( { model
             | message = Nothing
@@ -118,11 +112,9 @@ getMessage msg =
     let
         url =
             inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
-
-        request =
-            Http.get url Message.decoder
     in
-        Http.send NewMessage request
+        Http.get url Message.decoder
+            |> Http.send NewMessage
 
 
 
