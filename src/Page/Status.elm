@@ -56,11 +56,11 @@ init session =
     , goRoutines = Metric "Goroutines" 0 fmtInt graphZero initDataSet 10
     , webSockets = Metric "Open WebSockets" 0 fmtInt graphZero initDataSet 10
     , smtpConnOpen = Metric "Open Connections" 0 fmtInt graphZero initDataSet 10
-    , smtpConnTotal = Metric "Total Connections" 0 fmtInt graphZero initDataSet 60
-    , smtpReceivedTotal = Metric "Messages Received" 0 fmtInt graphZero initDataSet 60
-    , smtpErrorsTotal = Metric "Messages Errors" 0 fmtInt graphZero initDataSet 60
-    , smtpWarnsTotal = Metric "Messages Warns" 0 fmtInt graphZero initDataSet 60
-    , retentionDeletesTotal = Metric "Retention Deletes" 0 fmtInt graphZero initDataSet 60
+    , smtpConnTotal = Metric "Total Connections" 0 fmtInt graphChange initDataSet 60
+    , smtpReceivedTotal = Metric "Messages Received" 0 fmtInt graphChange initDataSet 60
+    , smtpErrorsTotal = Metric "Messages Errors" 0 fmtInt graphChange initDataSet 60
+    , smtpWarnsTotal = Metric "Messages Warns" 0 fmtInt graphChange initDataSet 60
+    , retentionDeletesTotal = Metric "Retention Deletes" 0 fmtInt graphChange initDataSet 60
     , retainedCount = Metric "Stored Messages" 0 fmtInt graphZero initDataSet 60
     , retainedSize = Metric "Store Size" 0 Filesize.format graphZero initDataSet 60
     }
@@ -83,7 +83,7 @@ load =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every (1 * Time.second) Tick
+    Time.every (10 * Time.second) Tick
 
 
 
@@ -127,27 +127,27 @@ updateMetrics metrics model =
             , webSockets = updateLocalMetric model.webSockets x metrics.webSockets
             , smtpConnOpen = updateLocalMetric model.smtpConnOpen x metrics.smtpConnOpen
             , smtpConnTotal =
-                updateRemoteMetric
+                updateRemoteTotal
                     model.smtpConnTotal
                     metrics.smtpConnTotal
                     metrics.smtpConnHist
             , smtpReceivedTotal =
-                updateRemoteMetric
+                updateRemoteTotal
                     model.smtpReceivedTotal
                     metrics.smtpReceivedTotal
                     metrics.smtpReceivedHist
             , smtpErrorsTotal =
-                updateRemoteMetric
+                updateRemoteTotal
                     model.smtpErrorsTotal
                     metrics.smtpErrorsTotal
                     metrics.smtpErrorsHist
             , smtpWarnsTotal =
-                updateRemoteMetric
+                updateRemoteTotal
                     model.smtpWarnsTotal
                     metrics.smtpWarnsTotal
                     metrics.smtpWarnsHist
             , retentionDeletesTotal =
-                updateRemoteMetric
+                updateRemoteTotal
                     model.retentionDeletesTotal
                     metrics.retentionDeletesTotal
                     metrics.retentionDeletesHist
@@ -182,7 +182,25 @@ updateRemoteMetric : Metric -> Int -> List Int -> Metric
 updateRemoteMetric metric value history =
     { metric
         | value = value
-        , history = List.indexedMap (\x y -> ( toFloat x, toFloat y )) history
+        , history =
+            history
+                |> zeroPadList
+                |> List.indexedMap (\x y -> ( toFloat x, toFloat y ))
+    }
+
+
+{-| Update a single Metric, with history tracked on server. Sparkline will chart changes to the
+total instead of its absolute value.
+-}
+updateRemoteTotal : Metric -> Int -> List Int -> Metric
+updateRemoteTotal metric value history =
+    { metric
+        | value = value
+        , history =
+            history
+                |> zeroPadList
+                |> changeList
+                |> List.indexedMap (\x y -> ( toFloat x, toFloat y ))
     }
 
 
@@ -264,13 +282,19 @@ graphSize =
     ( 180, 16, 0, 0 )
 
 
-graphStyle : Sparkline.Param a -> Sparkline.Param a
-graphStyle =
+areaStyle : Sparkline.Param a -> Sparkline.Param a
+areaStyle =
     Sparkline.Style
         [ SvgAttrib.fill "rgba(50,100,255,0.3)"
         , SvgAttrib.stroke "rgba(50,100,255,1.0)"
         , SvgAttrib.strokeWidth "1.0"
-        , SvgAttrib.alignmentBaseline "baseline"
+        ]
+
+
+barStyle : Sparkline.Param a -> Sparkline.Param a
+barStyle =
+    Sparkline.Style
+        [ SvgAttrib.fill "rgba(50,200,50,0.7)"
         ]
 
 
@@ -282,12 +306,29 @@ zeroStyle =
         ]
 
 
+{-| Bar graph to be used with updateRemoteTotal metrics (change instead of absolute values).
+-}
+graphChange : DataSet -> Html a
+graphChange data =
+    let
+        -- Used with Domain to stop sparkline forgetting about zero; continue scrolling graph.
+        x =
+            case List.head data of
+                Nothing ->
+                    0
 
--- graphFloat : DataSet -> Html a
--- graphFloat data =
---     sparkline graphSize [ Sparkline.Line data |> graphStyle ]
+                Just point ->
+                    Tuple.first point
+    in
+        sparkline graphSize
+            [ Sparkline.Bar 2.5 data |> barStyle
+            , Sparkline.ZeroLine |> zeroStyle
+            , Sparkline.Domain [ ( x, 0 ), ( x, 1 ) ]
+            ]
 
 
+{-| Zero based area graph, for charting absolute values relative to 0.
+-}
 graphZero : DataSet -> Html a
 graphZero data =
     let
@@ -301,7 +342,7 @@ graphZero data =
                     Tuple.first point
     in
         sparkline graphSize
-            [ Sparkline.Area data |> graphStyle
+            [ Sparkline.Area data |> areaStyle
             , Sparkline.ZeroLine |> zeroStyle
             , Sparkline.Domain [ ( x, 0 ), ( x, 1 ) ]
             ]
@@ -319,6 +360,33 @@ framePanel name html =
 -- UTILS --
 
 
+{-| Compute difference between each Int in numbers.
+-}
+changeList : List Int -> List Int
+changeList numbers =
+    let
+        tail =
+            List.tail numbers |> Maybe.withDefault []
+    in
+        List.map2 (-) tail numbers
+
+
+{-| Pad the front of a list with 0s to make it at least 60 elements long.
+-}
+zeroPadList : List Int -> List Int
+zeroPadList numbers =
+    let
+        needed =
+            60 - List.length numbers
+    in
+        if needed > 0 then
+            (List.repeat needed 0) ++ numbers
+        else
+            numbers
+
+
+{-| Format an Int with thousands separators.
+-}
 fmtInt : Int -> String
 fmtInt n =
     thousands (toString n)
