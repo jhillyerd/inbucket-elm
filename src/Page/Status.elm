@@ -12,16 +12,28 @@ import Svg.Attributes as SvgAttrib
 import Time exposing (Time)
 
 
--- import Html.Attributes exposing (..)
--- import Html.Events exposing (..)
 -- MODEL --
 
 
 type alias Model =
     { metrics : Maybe Metrics
     , xCounter : Float
-    , heapObjects : DataSet
-    , goRoutines : DataSet
+    , sysMem : Metric
+    , heapSize : Metric
+    , heapUsed : Metric
+    , heapObjects : Metric
+    , goRoutines : Metric
+    , webSockets : Metric
+    }
+
+
+type alias Metric =
+    { label : String
+    , value : Int
+    , formatter : Int -> String
+    , graph : DataSet -> Html Msg
+    , history : DataSet
+    , minutes : Int
     }
 
 
@@ -29,8 +41,12 @@ init : Session -> Model
 init session =
     { metrics = Nothing
     , xCounter = 60
-    , heapObjects = initDataSet
-    , goRoutines = initDataSet
+    , sysMem = Metric "System Memory" 0 Filesize.format graphZero initDataSet 10
+    , heapSize = Metric "Heap Size" 0 Filesize.format graphZero initDataSet 10
+    , heapUsed = Metric "Heap Used" 0 Filesize.format graphZero initDataSet 10
+    , heapObjects = Metric "Heap # Objects" 0 fmtInt graphZero initDataSet 10
+    , goRoutines = Metric "Goroutines" 0 fmtInt graphZero initDataSet 10
+    , webSockets = Metric "Open WebSockets" 0 fmtInt graphZero initDataSet 10
     }
 
 
@@ -51,7 +67,7 @@ load =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every (5 * Time.second) Tick
+    Time.every (1 * Time.second) Tick
 
 
 
@@ -76,6 +92,8 @@ update session msg model =
             ( model, getMetrics, Session.ClearFlash )
 
 
+{-| Update all metrics in Model; increment xCounter.
+-}
 updateMetrics : Metrics -> Model -> Model
 updateMetrics metrics model =
     let
@@ -85,14 +103,33 @@ updateMetrics metrics model =
         { model
             | metrics = Just metrics
             , xCounter = x + 1
-            , heapObjects = addPoint model.heapObjects ( x, toFloat (metrics.heapObjects) )
-            , goRoutines = addPoint model.goRoutines ( x, toFloat (metrics.goRoutines) )
+            , sysMem = updateMetric model.sysMem x metrics.sysMem
+            , heapSize = updateMetric model.heapSize x metrics.heapSize
+            , heapUsed = updateMetric model.heapUsed x metrics.heapUsed
+            , heapObjects = updateMetric model.heapObjects x metrics.heapObjects
+            , goRoutines = updateMetric model.goRoutines x metrics.goRoutines
+            , webSockets = updateMetric model.webSockets x metrics.webSockets
         }
+
+
+{-| Update a single Metric.
+-}
+updateMetric : Metric -> Float -> Int -> Metric
+updateMetric metric x value =
+    { metric
+        | value = value
+        , history = addPoint metric.history ( x, (toFloat value) )
+    }
 
 
 addPoint : DataSet -> Point -> DataSet
 addPoint data point =
-    data ++ [ point ]
+    case List.tail data of
+        Just newData ->
+            newData ++ [ point ]
+
+        Nothing ->
+            [ point ]
 
 
 getMetrics : Cmd Msg
@@ -116,20 +153,12 @@ view session model =
             Just metrics ->
                 div []
                     [ framePanel "General Metrics"
-                        [ viewLiveMetric "System Memory" Filesize.format metrics.sysMem graphNull
-                        , viewLiveMetric "Heap Size" Filesize.format metrics.heapSize graphNull
-                        , viewLiveMetric "Heap In-Use" Filesize.format metrics.heapInUse graphNull
-                        , viewLiveMetric "Heap # Objects"
-                            fmtInt
-                            metrics.heapObjects
-                            (graphFloat model.heapObjects)
-                        , viewLiveMetric "Goroutines"
-                            fmtInt
-                            metrics.goRoutines
-                            (graphZero
-                                model.goRoutines
-                            )
-                        , viewLiveMetric "Open WebSockets" fmtInt metrics.webSockets graphNull
+                        [ viewMetric model.sysMem
+                        , viewMetric model.heapSize
+                        , viewMetric model.heapUsed
+                        , viewMetric model.heapObjects
+                        , viewMetric model.goRoutines
+                        , viewMetric model.webSockets
                         ]
                     , framePanel "SMTP Metrics"
                         [ viewLiveMetric "Open Connections" fmtInt metrics.smtpCurrent graphNull
@@ -139,6 +168,18 @@ view session model =
                         , viewLiveMetric "Warnings Logged" fmtInt metrics.smtpWarnsTotal graphNull
                         ]
                     ]
+        ]
+
+
+viewMetric : Metric -> Html Msg
+viewMetric metric =
+    div [ class "metric" ]
+        [ div [ class "label" ] [ text metric.label ]
+        , div [ class "value" ] [ text (metric.formatter metric.value) ]
+        , div [ class "graph" ]
+            [ metric.graph metric.history
+            , text ("(" ++ toString metric.minutes ++ "min)")
+            ]
         ]
 
 
@@ -167,30 +208,44 @@ graphSize =
 graphStyle : Sparkline.Param a -> Sparkline.Param a
 graphStyle =
     Sparkline.Style
-        [ SvgAttrib.stroke "rgba(100,100,255,1.0)"
-        , SvgAttrib.strokeWidth "1.5"
+        [ SvgAttrib.fill "rgba(50,100,255,0.3)"
+        , SvgAttrib.stroke "rgba(50,100,255,1.0)"
+        , SvgAttrib.strokeWidth "1.0"
+        , SvgAttrib.alignmentBaseline "baseline"
         ]
 
 
 zeroStyle : Sparkline.Param a -> Sparkline.Param a
 zeroStyle =
     Sparkline.Style
-        [ SvgAttrib.stroke "rgba(200,200,200,1.0)"
-        , SvgAttrib.strokeWidth "1.5"
+        [ SvgAttrib.stroke "rgba(0,0,0,0.2)"
+        , SvgAttrib.strokeWidth "1.0"
         ]
 
 
-graphFloat : DataSet -> Html a
-graphFloat data =
-    sparkline graphSize [ Sparkline.Line data |> graphStyle ]
+
+-- graphFloat : DataSet -> Html a
+-- graphFloat data =
+--     sparkline graphSize [ Sparkline.Line data |> graphStyle ]
 
 
 graphZero : DataSet -> Html a
 graphZero data =
-    sparkline graphSize
-        [ Sparkline.ZeroLine |> zeroStyle
-        , Sparkline.Line data |> graphStyle
-        ]
+    let
+        -- Used with Domain to stop sparkline forgetting about zero; continue scrolling graph.
+        x =
+            case List.head data of
+                Nothing ->
+                    0
+
+                Just point ->
+                    Tuple.first point
+    in
+        sparkline graphSize
+            [ Sparkline.Area data |> graphStyle
+            , Sparkline.ZeroLine |> zeroStyle
+            , Sparkline.Domain [ ( x, 0 ), ( x, 1 ) ]
+            ]
 
 
 framePanel : String -> List (Html a) -> Html a

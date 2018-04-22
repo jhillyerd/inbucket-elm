@@ -7,7 +7,7 @@ import Json.Decode.Pipeline exposing (..)
 type alias Metrics =
     { sysMem : Int
     , heapSize : Int
-    , heapInUse : Int
+    , heapUsed : Int
     , heapObjects : Int
     , goRoutines : Int
     , webSockets : Int
@@ -23,8 +23,8 @@ decoder : Decoder Metrics
 decoder =
     decode Metrics
         |> requiredAt [ "memstats", "Sys" ] int
-        |> requiredAt [ "memstats", "HeapAlloc" ] int
         |> requiredAt [ "memstats", "HeapSys" ] int
+        |> requiredAt [ "memstats", "HeapAlloc" ] int
         |> requiredAt [ "memstats", "HeapObjects" ] int
         |> requiredAt [ "goroutines" ] int
         |> requiredAt [ "http", "WebSocketConnectsCurrent" ] int

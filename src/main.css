@@ -219,12 +219,13 @@ footer {
 }
 
 .metric-panel .metrics {
-  padding: 10px;
+  padding: 7px 10px;
 }
 
 .metric-panel .metric {
   display: flex;
   flex-wrap: wrap;
+  margin: 3px 0;
 }
 
 .metric .label {
