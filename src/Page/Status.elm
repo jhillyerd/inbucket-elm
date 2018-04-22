@@ -89,7 +89,11 @@ view session model =
                         , viewLiveMetric "Open WebSockets" fmtInt metrics.webSockets
                         ]
                     , framePanel "SMTP Metrics"
-                        [ viewLiveMetric "Current Connections" fmtInt metrics.smtpCurrent
+                        [ viewLiveMetric "Open Connections" fmtInt metrics.smtpCurrent
+                        , viewLiveMetric "Total Connections" fmtInt metrics.smtpConnectsTotal
+                        , viewLiveMetric "Messages Received" fmtInt metrics.smtpReceivedTotal
+                        , viewLiveMetric "Errors Logged" fmtInt metrics.smtpErrorsTotal
+                        , viewLiveMetric "Warnings Logged" fmtInt metrics.smtpWarnsTotal
                         ]
                     ]
         ]

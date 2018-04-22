@@ -12,6 +12,10 @@ type alias Metrics =
     , goRoutines : Int
     , webSockets : Int
     , smtpCurrent : Int
+    , smtpConnectsTotal : Int
+    , smtpReceivedTotal : Int
+    , smtpErrorsTotal : Int
+    , smtpWarnsTotal : Int
     }
 
 
@@ -25,3 +29,7 @@ decoder =
         |> requiredAt [ "goroutines" ] int
         |> requiredAt [ "http", "WebSocketConnectsCurrent" ] int
         |> requiredAt [ "smtp", "ConnectsCurrent" ] int
+        |> requiredAt [ "smtp", "ConnectsTotal" ] int
+        |> requiredAt [ "smtp", "ReceivedTotal" ] int
+        |> requiredAt [ "smtp", "ErrorsTotal" ] int
+        |> requiredAt [ "smtp", "WarnsTotal" ] int
