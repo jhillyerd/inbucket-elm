@@ -7,6 +7,8 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http exposing (Error)
 import HttpUtil
+import Sparkline exposing (sparkline, Point, DataSet, Size)
+import Svg.Attributes as SvgAttrib
 import Time exposing (Time)
 
 
@@ -16,12 +18,26 @@ import Time exposing (Time)
 
 
 type alias Model =
-    { metrics : Maybe Metrics }
+    { metrics : Maybe Metrics
+    , xCounter : Float
+    , heapObjects : DataSet
+    , goRoutines : DataSet
+    }
 
 
 init : Session -> Model
 init session =
-    { metrics = Nothing }
+    { metrics = Nothing
+    , xCounter = 60
+    , heapObjects = initDataSet
+    , goRoutines = initDataSet
+    }
+
+
+initDataSet : DataSet
+initDataSet =
+    List.range 0 59
+        |> List.map (\x -> ( toFloat (x), 0 ))
 
 
 load : Cmd Msg
@@ -51,13 +67,32 @@ update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
     case msg of
         NewMetrics (Ok metrics) ->
-            ( { model | metrics = Just metrics }, Cmd.none, Session.None )
+            ( updateMetrics metrics model, Cmd.none, Session.None )
 
         NewMetrics (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         Tick time ->
             ( model, getMetrics, Session.ClearFlash )
+
+
+updateMetrics : Metrics -> Model -> Model
+updateMetrics metrics model =
+    let
+        x =
+            model.xCounter
+    in
+        { model
+            | metrics = Just metrics
+            , xCounter = x + 1
+            , heapObjects = addPoint model.heapObjects ( x, toFloat (metrics.heapObjects) )
+            , goRoutines = addPoint model.goRoutines ( x, toFloat (metrics.goRoutines) )
+        }
+
+
+addPoint : DataSet -> Point -> DataSet
+addPoint data point =
+    data ++ [ point ]
 
 
 getMetrics : Cmd Msg
@@ -81,30 +116,80 @@ view session model =
             Just metrics ->
                 div []
                     [ framePanel "General Metrics"
-                        [ viewLiveMetric "System Memory" Filesize.format metrics.sysMem
-                        , viewLiveMetric "Heap Size" Filesize.format metrics.heapSize
-                        , viewLiveMetric "Heap In-Use" Filesize.format metrics.heapInUse
-                        , viewLiveMetric "Heap # Objects" fmtInt metrics.heapObjects
-                        , viewLiveMetric "Goroutines" fmtInt metrics.goRoutines
-                        , viewLiveMetric "Open WebSockets" fmtInt metrics.webSockets
+                        [ viewLiveMetric "System Memory" Filesize.format metrics.sysMem graphNull
+                        , viewLiveMetric "Heap Size" Filesize.format metrics.heapSize graphNull
+                        , viewLiveMetric "Heap In-Use" Filesize.format metrics.heapInUse graphNull
+                        , viewLiveMetric "Heap # Objects"
+                            fmtInt
+                            metrics.heapObjects
+                            (graphFloat model.heapObjects)
+                        , viewLiveMetric "Goroutines"
+                            fmtInt
+                            metrics.goRoutines
+                            (graphZero
+                                model.goRoutines
+                            )
+                        , viewLiveMetric "Open WebSockets" fmtInt metrics.webSockets graphNull
                         ]
                     , framePanel "SMTP Metrics"
-                        [ viewLiveMetric "Open Connections" fmtInt metrics.smtpCurrent
-                        , viewLiveMetric "Total Connections" fmtInt metrics.smtpConnectsTotal
-                        , viewLiveMetric "Messages Received" fmtInt metrics.smtpReceivedTotal
-                        , viewLiveMetric "Errors Logged" fmtInt metrics.smtpErrorsTotal
-                        , viewLiveMetric "Warnings Logged" fmtInt metrics.smtpWarnsTotal
+                        [ viewLiveMetric "Open Connections" fmtInt metrics.smtpCurrent graphNull
+                        , viewLiveMetric "Total Connections" fmtInt metrics.smtpConnectsTotal graphNull
+                        , viewLiveMetric "Messages Received" fmtInt metrics.smtpReceivedTotal graphNull
+                        , viewLiveMetric "Errors Logged" fmtInt metrics.smtpErrorsTotal graphNull
+                        , viewLiveMetric "Warnings Logged" fmtInt metrics.smtpWarnsTotal graphNull
                         ]
                     ]
         ]
 
 
-viewLiveMetric : String -> (Int -> String) -> Int -> Html a
-viewLiveMetric label formatter value =
+viewLiveMetric : String -> (Int -> String) -> Int -> Html a -> Html a
+viewLiveMetric label formatter value graph =
     div [ class "metric" ]
         [ div [ class "label" ] [ text label ]
         , div [ class "value" ] [ text (formatter value) ]
-        , div [ class "graph" ] [ text "~magic graph goes here~ (10min)" ]
+        , div [ class "graph" ]
+            [ graph
+            , text "(10min)"
+            ]
+        ]
+
+
+graphNull : Html a
+graphNull =
+    div [] []
+
+
+graphSize : Size
+graphSize =
+    ( 180, 16, 0, 0 )
+
+
+graphStyle : Sparkline.Param a -> Sparkline.Param a
+graphStyle =
+    Sparkline.Style
+        [ SvgAttrib.stroke "rgba(100,100,255,1.0)"
+        , SvgAttrib.strokeWidth "1.5"
+        ]
+
+
+zeroStyle : Sparkline.Param a -> Sparkline.Param a
+zeroStyle =
+    Sparkline.Style
+        [ SvgAttrib.stroke "rgba(200,200,200,1.0)"
+        , SvgAttrib.strokeWidth "1.5"
+        ]
+
+
+graphFloat : DataSet -> Html a
+graphFloat data =
+    sparkline graphSize [ Sparkline.Line data |> graphStyle ]
+
+
+graphZero : DataSet -> Html a
+graphZero data =
+    sparkline graphSize
+        [ Sparkline.ZeroLine |> zeroStyle
+        , Sparkline.Line data |> graphStyle
         ]
 
 
