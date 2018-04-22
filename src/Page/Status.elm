@@ -24,6 +24,14 @@ type alias Model =
     , heapObjects : Metric
     , goRoutines : Metric
     , webSockets : Metric
+    , smtpConnOpen : Metric
+    , smtpConnTotal : Metric
+    , smtpReceivedTotal : Metric
+    , smtpErrorsTotal : Metric
+    , smtpWarnsTotal : Metric
+    , retentionDeletesTotal : Metric
+    , retainedCount : Metric
+    , retainedSize : Metric
     }
 
 
@@ -47,6 +55,14 @@ init session =
     , heapObjects = Metric "Heap # Objects" 0 fmtInt graphZero initDataSet 10
     , goRoutines = Metric "Goroutines" 0 fmtInt graphZero initDataSet 10
     , webSockets = Metric "Open WebSockets" 0 fmtInt graphZero initDataSet 10
+    , smtpConnOpen = Metric "Open Connections" 0 fmtInt graphZero initDataSet 10
+    , smtpConnTotal = Metric "Total Connections" 0 fmtInt graphZero initDataSet 60
+    , smtpReceivedTotal = Metric "Messages Received" 0 fmtInt graphZero initDataSet 60
+    , smtpErrorsTotal = Metric "Messages Errors" 0 fmtInt graphZero initDataSet 60
+    , smtpWarnsTotal = Metric "Messages Warns" 0 fmtInt graphZero initDataSet 60
+    , retentionDeletesTotal = Metric "Retention Deletes" 0 fmtInt graphZero initDataSet 60
+    , retainedCount = Metric "Stored Messages" 0 fmtInt graphZero initDataSet 60
+    , retainedSize = Metric "Store Size" 0 Filesize.format graphZero initDataSet 60
     }
 
 
@@ -103,33 +119,71 @@ updateMetrics metrics model =
         { model
             | metrics = Just metrics
             , xCounter = x + 1
-            , sysMem = updateMetric model.sysMem x metrics.sysMem
-            , heapSize = updateMetric model.heapSize x metrics.heapSize
-            , heapUsed = updateMetric model.heapUsed x metrics.heapUsed
-            , heapObjects = updateMetric model.heapObjects x metrics.heapObjects
-            , goRoutines = updateMetric model.goRoutines x metrics.goRoutines
-            , webSockets = updateMetric model.webSockets x metrics.webSockets
+            , sysMem = updateLocalMetric model.sysMem x metrics.sysMem
+            , heapSize = updateLocalMetric model.heapSize x metrics.heapSize
+            , heapUsed = updateLocalMetric model.heapUsed x metrics.heapUsed
+            , heapObjects = updateLocalMetric model.heapObjects x metrics.heapObjects
+            , goRoutines = updateLocalMetric model.goRoutines x metrics.goRoutines
+            , webSockets = updateLocalMetric model.webSockets x metrics.webSockets
+            , smtpConnOpen = updateLocalMetric model.smtpConnOpen x metrics.smtpConnOpen
+            , smtpConnTotal =
+                updateRemoteMetric
+                    model.smtpConnTotal
+                    metrics.smtpConnTotal
+                    metrics.smtpConnHist
+            , smtpReceivedTotal =
+                updateRemoteMetric
+                    model.smtpReceivedTotal
+                    metrics.smtpReceivedTotal
+                    metrics.smtpReceivedHist
+            , smtpErrorsTotal =
+                updateRemoteMetric
+                    model.smtpErrorsTotal
+                    metrics.smtpErrorsTotal
+                    metrics.smtpErrorsHist
+            , smtpWarnsTotal =
+                updateRemoteMetric
+                    model.smtpWarnsTotal
+                    metrics.smtpWarnsTotal
+                    metrics.smtpWarnsHist
+            , retentionDeletesTotal =
+                updateRemoteMetric
+                    model.retentionDeletesTotal
+                    metrics.retentionDeletesTotal
+                    metrics.retentionDeletesHist
+            , retainedCount =
+                updateRemoteMetric
+                    model.retainedCount
+                    metrics.retainedCount
+                    metrics.retainedCountHist
+            , retainedSize =
+                updateRemoteMetric
+                    model.retainedSize
+                    metrics.retainedSize
+                    metrics.retainedSizeHist
         }
 
 
-{-| Update a single Metric.
+{-| Update a single Metric, with history tracked locally.
 -}
-updateMetric : Metric -> Float -> Int -> Metric
-updateMetric metric x value =
+updateLocalMetric : Metric -> Float -> Int -> Metric
+updateLocalMetric metric x value =
     { metric
         | value = value
-        , history = addPoint metric.history ( x, (toFloat value) )
+        , history =
+            (Maybe.withDefault [] (List.tail metric.history))
+                ++ [ ( x, (toFloat value) ) ]
     }
 
 
-addPoint : DataSet -> Point -> DataSet
-addPoint data point =
-    case List.tail data of
-        Just newData ->
-            newData ++ [ point ]
-
-        Nothing ->
-            [ point ]
+{-| Update a single Metric, with history tracked on server.
+-}
+updateRemoteMetric : Metric -> Int -> List Int -> Metric
+updateRemoteMetric metric value history =
+    { metric
+        | value = value
+        , history = List.indexedMap (\x y -> ( toFloat x, toFloat y )) history
+    }
 
 
 getMetrics : Cmd Msg
@@ -161,11 +215,16 @@ view session model =
                         , viewMetric model.webSockets
                         ]
                     , framePanel "SMTP Metrics"
-                        [ viewLiveMetric "Open Connections" fmtInt metrics.smtpCurrent graphNull
-                        , viewLiveMetric "Total Connections" fmtInt metrics.smtpConnectsTotal graphNull
-                        , viewLiveMetric "Messages Received" fmtInt metrics.smtpReceivedTotal graphNull
-                        , viewLiveMetric "Errors Logged" fmtInt metrics.smtpErrorsTotal graphNull
-                        , viewLiveMetric "Warnings Logged" fmtInt metrics.smtpWarnsTotal graphNull
+                        [ viewMetric model.smtpConnOpen
+                        , viewMetric model.smtpConnTotal
+                        , viewMetric model.smtpReceivedTotal
+                        , viewMetric model.smtpErrorsTotal
+                        , viewMetric model.smtpWarnsTotal
+                        ]
+                    , framePanel "Storage Metrics"
+                        [ viewMetric model.retentionDeletesTotal
+                        , viewMetric model.retainedCount
+                        , viewMetric model.retainedSize
                         ]
                     ]
         ]
