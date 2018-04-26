@@ -10,6 +10,7 @@ type Route
     = Unknown String
     | Home
     | Mailbox String
+    | Monitor
     | Status
 
 
@@ -18,6 +19,7 @@ matcher =
     Url.oneOf
         [ Url.map Home (s "")
         , Url.map Mailbox (s "m" </> string)
+        , Url.map Monitor (s "monitor")
         , Url.map Status (s "status")
         ]
 
@@ -35,6 +37,9 @@ routeToString page =
 
                 Mailbox name ->
                     [ "m", name ]
+
+                Monitor ->
+                    [ "monitor" ]
 
                 Status ->
                     [ "status" ]

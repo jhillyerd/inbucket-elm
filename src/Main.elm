@@ -7,6 +7,7 @@ import Html.Events as Events
 import Navigation exposing (Location)
 import Page.Home as Home
 import Page.Mailbox as Mailbox
+import Page.Monitor as Monitor
 import Page.Status as Status
 import Route exposing (Route)
 
@@ -20,6 +21,7 @@ type alias Model =
     , mailboxName : String
     , home : Home.Model
     , mailbox : Mailbox.Model
+    , monitor : Monitor.Model
     , status : Status.Model
     }
 
@@ -34,9 +36,10 @@ init location =
             { route = Route.Home
             , session = session
             , mailboxName = ""
-            , home = Home.init session
-            , mailbox = Mailbox.init session
-            , status = Status.init session
+            , home = Home.init
+            , mailbox = Mailbox.init
+            , monitor = Monitor.init
+            , status = Status.init
             }
 
         route =
@@ -55,6 +58,7 @@ type Msg
     | ViewMailbox
     | HomeMsg Home.Msg
     | MailboxMsg Mailbox.Msg
+    | MonitorMsg Monitor.Msg
     | StatusMsg Status.Msg
 
 
@@ -65,6 +69,9 @@ type Msg
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.route of
+        Route.Monitor ->
+            Sub.map MonitorMsg (Monitor.subscriptions model.monitor)
+
         Route.Status ->
             Sub.map StatusMsg (Status.subscriptions model.status)
 
@@ -111,6 +118,13 @@ update msg model =
                 in
                     ( { model | mailbox = subModel }, Cmd.map MailboxMsg subCmd, sessionMsg )
 
+            MonitorMsg subMsg ->
+                let
+                    ( subModel, subCmd, sessionMsg ) =
+                        Monitor.update model.session subMsg model.monitor
+                in
+                    ( { model | monitor = subModel }, Cmd.map MonitorMsg subCmd, sessionMsg )
+
             StatusMsg subMsg ->
                 let
                     ( subModel, subCmd, sessionMsg ) =
@@ -129,6 +143,12 @@ updateRoute route model =
         Route.Mailbox name ->
             ( { model | route = route }
             , Cmd.map MailboxMsg (Mailbox.load name)
+            , Session.None
+            )
+
+        Route.Monitor ->
+            ( { model | route = route, monitor = Monitor.init }
+            , Cmd.none
             , Session.None
             )
 
@@ -175,6 +195,9 @@ page model =
         Route.Mailbox name ->
             Html.map MailboxMsg (Mailbox.view model.session model.mailbox)
 
+        Route.Monitor ->
+            Html.map MonitorMsg (Monitor.view model.session model.monitor)
+
         Route.Status ->
             Html.map StatusMsg (Status.view model.session model.status)
 
@@ -185,6 +208,7 @@ viewHeader model =
         [ ul [ class "nav", attribute "role" "navigation" ]
             [ li [] [ a [ Route.href Route.Home ] [ text "Home" ] ]
             , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
+            , li [] [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
             , li []
                 [ form [ Events.onSubmit ViewMailbox ]
                     [ input

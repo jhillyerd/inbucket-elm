@@ -13,8 +13,8 @@ type alias Model =
     {}
 
 
-init : Session -> Model
-init session =
+init : Model
+init =
     {}
 
 

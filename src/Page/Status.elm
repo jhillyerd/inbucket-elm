@@ -45,8 +45,8 @@ type alias Metric =
     }
 
 
-init : Session -> Model
-init session =
+init : Model
+init =
     { metrics = Nothing
     , xCounter = 60
     , sysMem = Metric "System Memory" 0 Filesize.format graphZero initDataSet 10
