@@ -5,10 +5,11 @@ import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Data.Session as Session exposing (Session)
 import Json.Decode as Decode exposing (Decoder)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, href, id, placeholder, rel, style, target, type_, value)
+import Html.Attributes exposing (class, classList, href, id, placeholder, target)
 import Html.Events exposing (..)
 import Http exposing (Error)
 import HttpUtil
+import Route exposing (Route)
 
 
 inbucketBase : String
@@ -21,15 +22,16 @@ inbucketBase =
 
 
 type alias Model =
-    { headers : List MessageHeader
-    , selected : Maybe MessageHeader
+    { name : String
+    , selected : Maybe String
+    , headers : List MessageHeader
     , message : Maybe Message
     }
 
 
-init : Model
-init =
-    Model [] Nothing Nothing
+init : String -> Maybe String -> Model
+init name id =
+    Model name id [] Nothing
 
 
 load : String -> Cmd Msg
@@ -42,7 +44,8 @@ load name =
 
 
 type Msg
-    = SelectMessage MessageHeader
+    = ClickMessage String
+    | ViewMessage String
     | DeleteMessage Message
     | DeleteMessageResult (Result Http.Error ())
     | NewMailbox (Result Http.Error (List MessageHeader))
@@ -52,8 +55,17 @@ type Msg
 update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
     case msg of
-        SelectMessage msg ->
-            ( { model | selected = Just msg }, getMessage msg, Session.None )
+        ClickMessage id ->
+            ( { model | selected = Just id }
+            , Route.newUrl (Route.Message model.name id)
+            , Session.None
+            )
+
+        ViewMessage id ->
+            ( { model | selected = Just id }
+            , getMessage model.name id
+            , Session.None
+            )
 
         DeleteMessage msg ->
             deleteMessage model msg
@@ -65,7 +77,17 @@ update session msg model =
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         NewMailbox (Ok headers) ->
-            ( { model | headers = headers }, Cmd.none, Session.None )
+            let
+                newModel =
+                    { model | headers = headers }
+            in
+                case model.selected of
+                    Nothing ->
+                        ( newModel, Cmd.none, Session.None )
+
+                    Just id ->
+                        -- Recurse to select message id.
+                        update session (ViewMessage id) newModel
 
         NewMailbox (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
@@ -107,11 +129,11 @@ deleteMessage model msg =
         )
 
 
-getMessage : MessageHeader -> Cmd Msg
-getMessage msg =
+getMessage : String -> String -> Cmd Msg
+getMessage mailbox id =
     let
         url =
-            inbucketBase ++ "/api/v1/mailbox/" ++ msg.mailbox ++ "/" ++ msg.id
+            inbucketBase ++ "/api/v1/mailbox/" ++ mailbox ++ "/" ++ id
     in
         Http.get url Message.decoder
             |> Http.send NewMessage
@@ -139,10 +161,10 @@ viewHeader mailbox msg =
     div
         [ classList
             [ ( "message-list-entry", True )
-            , ( "selected", mailbox.selected == Just msg )
+            , ( "selected", mailbox.selected == Just msg.id )
             , ( "unseen", not msg.seen )
             ]
-        , onClick (SelectMessage msg)
+        , onClick (ClickMessage msg.id)
         ]
         [ div [ class "subject" ] [ text msg.subject ]
         , div [ class "from" ] [ text msg.from ]

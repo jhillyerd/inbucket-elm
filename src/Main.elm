@@ -149,8 +149,14 @@ setRoute route model =
             )
 
         Route.Mailbox name ->
-            ( { model | page = Mailbox Mailbox.init }
+            ( { model | page = Mailbox (Mailbox.init name Nothing) }
             , Cmd.map MailboxMsg (Mailbox.load name)
+            , Session.None
+            )
+
+        Route.Message mailbox id ->
+            ( { model | page = Mailbox (Mailbox.init mailbox (Just id)) }
+            , Cmd.map MailboxMsg (Mailbox.load mailbox)
             , Session.None
             )
 

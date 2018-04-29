@@ -51,9 +51,8 @@ update session msg model =
             ( model, Cmd.none, Session.SetFlash err )
 
         OpenMessage msg ->
-            -- TODO Add a route that opens a specific message
             ( model
-            , Route.newUrl (Route.Mailbox msg.mailbox)
+            , Route.newUrl (Route.Message msg.mailbox msg.id)
             , Session.None
             )
 
