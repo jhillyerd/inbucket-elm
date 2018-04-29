@@ -15,14 +15,17 @@ import Route exposing (Route)
 -- MODEL --
 
 
+type Page
+    = Home Home.Model
+    | Mailbox Mailbox.Model
+    | Monitor Monitor.Model
+    | Status Status.Model
+
+
 type alias Model =
-    { route : Route
+    { page : Page
     , session : Session
     , mailboxName : String
-    , home : Home.Model
-    , mailbox : Mailbox.Model
-    , monitor : Monitor.Model
-    , status : Status.Model
     }
 
 
@@ -33,22 +36,15 @@ init location =
             Session.init
 
         model =
-            { route = Route.Home
+            { page = Home Home.init
             , session = session
             , mailboxName = ""
-            , home = Home.init
-            , mailbox = Mailbox.init
-            , monitor = Monitor.init
-            , status = Status.init
             }
 
         route =
             Route.fromLocation location
     in
-        if route /= model.route then
-            applySession (updateRoute route model)
-        else
-            ( model, Cmd.none )
+        applySession (setRoute route model)
 
 
 type Msg
@@ -68,12 +64,12 @@ type Msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.route of
-        Route.Monitor ->
-            Sub.map MonitorMsg (Monitor.subscriptions model.monitor)
+    case model.page of
+        Monitor subModel ->
+            Sub.map MonitorMsg (Monitor.subscriptions subModel)
 
-        Route.Status ->
-            Sub.map StatusMsg (Status.subscriptions model.status)
+        Status subModel ->
+            Sub.map StatusMsg (Status.subscriptions subModel)
 
         _ ->
             Sub.none
@@ -85,15 +81,15 @@ subscriptions model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    applySession
-        (case msg of
+    applySession <|
+        case msg of
             SetRoute route ->
                 -- Updates broser URL to requested route.
                 ( model, Route.newUrl route, Session.None )
 
             NewRoute route ->
                 -- Responds to new browser URL.
-                updateRoute route model
+                setRoute route model
 
             MailboxNameInput name ->
                 ( { model | mailboxName = name }, Cmd.none, Session.None )
@@ -104,70 +100,76 @@ update msg model =
                 , Session.None
                 )
 
-            HomeMsg subMsg ->
-                let
-                    ( subModel, subCmd, sessionMsg ) =
-                        Home.update model.session subMsg model.home
-                in
-                    ( { model | home = subModel }, Cmd.map HomeMsg subCmd, sessionMsg )
-
-            MailboxMsg subMsg ->
-                let
-                    ( subModel, subCmd, sessionMsg ) =
-                        Mailbox.update model.session subMsg model.mailbox
-                in
-                    ( { model | mailbox = subModel }, Cmd.map MailboxMsg subCmd, sessionMsg )
-
-            MonitorMsg subMsg ->
-                let
-                    ( subModel, subCmd, sessionMsg ) =
-                        Monitor.update model.session subMsg model.monitor
-                in
-                    ( { model | monitor = subModel }, Cmd.map MonitorMsg subCmd, sessionMsg )
-
-            StatusMsg subMsg ->
-                let
-                    ( subModel, subCmd, sessionMsg ) =
-                        Status.update model.session subMsg model.status
-                in
-                    ( { model | status = subModel }, Cmd.map StatusMsg subCmd, sessionMsg )
-        )
+            _ ->
+                updatePage msg model
 
 
-updateRoute : Route -> Model -> ( Model, Cmd Msg, Session.Msg )
-updateRoute route model =
+{-| Delegates incoming messages to their respective sub-pages.
+-}
+updatePage : Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
+updatePage msg model =
+    let
+        -- Handles sub-model update by calling toUpdate with subMsg & subModel, then packing the
+        -- updated sub-model back into model.page.
+        modelUpdate toPage toMsg subUpdate subMsg subModel =
+            let
+                ( newModel, subCmd, sessionMsg ) =
+                    subUpdate model.session subMsg subModel
+            in
+                ( { model | page = toPage newModel }, Cmd.map toMsg subCmd, sessionMsg )
+    in
+        case ( msg, model.page ) of
+            ( HomeMsg subMsg, Home subModel ) ->
+                modelUpdate Home HomeMsg Home.update subMsg subModel
+
+            ( MailboxMsg subMsg, Mailbox subModel ) ->
+                modelUpdate Mailbox MailboxMsg Mailbox.update subMsg subModel
+
+            ( MonitorMsg subMsg, Monitor subModel ) ->
+                modelUpdate Monitor MonitorMsg Monitor.update subMsg subModel
+
+            ( StatusMsg subMsg, Status subModel ) ->
+                modelUpdate Status StatusMsg Status.update subMsg subModel
+
+            ( _, _ ) ->
+                -- Disregard messages destined for the wrong page.
+                ( model, Cmd.none, Session.None )
+
+
+setRoute : Route -> Model -> ( Model, Cmd Msg, Session.Msg )
+setRoute route model =
     case route of
         Route.Unknown hash ->
             ( model, Cmd.none, Session.SetFlash ("Unknown route requested: " ++ hash) )
 
+        Route.Home ->
+            ( { model | page = Home Home.init }
+            , Cmd.none
+            , Session.None
+            )
+
         Route.Mailbox name ->
-            ( { model | route = route }
+            ( { model | page = Mailbox Mailbox.init }
             , Cmd.map MailboxMsg (Mailbox.load name)
             , Session.None
             )
 
         Route.Monitor ->
-            ( { model | route = route, monitor = Monitor.init }
+            ( { model | page = Monitor Monitor.init }
             , Cmd.none
             , Session.None
             )
 
         Route.Status ->
-            ( { model | route = route }
+            ( { model | page = Status Status.init }
             , Cmd.map StatusMsg (Status.load)
             , Session.None
             )
 
-        _ ->
-            -- Handle routes that require no special setup.
-            ( { model | route = route }, Cmd.none, Session.None )
-
 
 applySession : ( Model, Cmd Msg, Session.Msg ) -> ( Model, Cmd Msg )
 applySession ( model, cmd, sessionMsg ) =
-    ( { model | session = Session.update sessionMsg model.session }
-    , cmd
-    )
+    ( { model | session = Session.update sessionMsg model.session }, cmd )
 
 
 
@@ -185,21 +187,18 @@ view model =
 
 page : Model -> Html Msg
 page model =
-    case model.route of
-        Route.Unknown _ ->
-            Html.map HomeMsg (Home.view model.session model.home)
+    case model.page of
+        Home subModel ->
+            Html.map HomeMsg (Home.view model.session subModel)
 
-        Route.Home ->
-            Html.map HomeMsg (Home.view model.session model.home)
+        Mailbox subModel ->
+            Html.map MailboxMsg (Mailbox.view model.session subModel)
 
-        Route.Mailbox name ->
-            Html.map MailboxMsg (Mailbox.view model.session model.mailbox)
+        Monitor subModel ->
+            Html.map MonitorMsg (Monitor.view model.session subModel)
 
-        Route.Monitor ->
-            Html.map MonitorMsg (Monitor.view model.session model.monitor)
-
-        Route.Status ->
-            Html.map StatusMsg (Status.view model.session model.status)
+        Status subModel ->
+            Html.map StatusMsg (Status.view model.session subModel)
 
 
 viewHeader : Model -> Html Msg
