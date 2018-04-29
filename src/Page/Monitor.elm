@@ -4,11 +4,12 @@ import Data.MessageHeader as MessageHeader exposing (MessageHeader)
 import Data.Session as Session exposing (Session)
 import Json.Decode exposing (decodeString)
 import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events as Events
+import Route
 import WebSocket
 
 
--- import Html.Attributes exposing (..)
--- import Html.Events exposing (..)
 -- MODEL --
 
 
@@ -37,6 +38,7 @@ subscriptions model =
 
 type Msg
     = NewMessage (Result String MessageHeader)
+    | OpenMessage MessageHeader
 
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
@@ -48,6 +50,13 @@ update session msg model =
         NewMessage (Err err) ->
             ( model, Cmd.none, Session.SetFlash err )
 
+        OpenMessage msg ->
+            -- TODO Add a route that opens a specific message
+            ( model
+            , Route.newUrl (Route.Mailbox msg.mailbox)
+            , Session.None
+            )
+
 
 
 -- VIEW --
@@ -55,13 +64,13 @@ update session msg model =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div []
+    div [ id "page" ]
         [ h1 [] [ text "Inbucket Monitor" ]
         , p [] [ text "Messages will be listed here shortly after delivery." ]
-        , table []
+        , table [ id "monitor" ]
             [ thead []
                 [ th [] [ text "Date" ]
-                , th [] [ text "From" ]
+                , th [ class "desktop" ] [ text "From" ]
                 , th [] [ text "Mailbox" ]
                 , th [] [ text "Subject" ]
                 ]
@@ -72,9 +81,9 @@ view session model =
 
 viewMessage : MessageHeader -> Html Msg
 viewMessage message =
-    tr []
+    tr [ Events.onClick (OpenMessage message) ]
         [ td [] [ text message.date ]
-        , td [] [ text message.from ]
+        , td [ class "desktop" ] [ text message.from ]
         , td [] [ text message.mailbox ]
         , td [] [ text message.subject ]
         ]

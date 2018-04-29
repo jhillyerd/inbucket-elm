@@ -46,17 +46,21 @@ body, table {
   grid-template:
     "head head head" auto
     "lpad page rpad" 1fr
-    "foot foot foot" auto / 1px 1fr 1px;
+    "foot foot foot" auto / minmax(20px, auto) 1fr minmax(20px, auto);
+  height: 100vh;
 }
 
-@media (min-width: 1000px) {
+@media (max-width: 999px) {
   #app {
-    justify-content: center;
     grid-template:
       "head head head" auto
       "lpad page rpad" 1fr
-      "foot foot foot" auto / minmax(20px, auto) 1fr minmax(20px, auto);
-    height: 100vh;
+      "foot foot foot" auto / 1px 1fr 1px;
+    height: auto;
+  }
+
+  .desktop {
+    display: none;
   }
 }
 
@@ -77,6 +81,11 @@ footer {
 
 #footer {
   margin: 10px auto;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 500;
 }
 
 /** BUTTONS */
@@ -239,4 +248,28 @@ footer {
 
 .metric .graph {
   flex-basis: 25em;
+}
+
+/** MONITOR **/
+
+#monitor {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#monitor th {
+  border-bottom: 2px solid var(--border-color);
+  text-align: left;
+  padding: 5px;
+}
+
+#monitor td {
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  padding: 5px;
+}
+
+#monitor tr:hover {
+  background-color: var(--selected-color);
+  cursor: pointer;
 }
