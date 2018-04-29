@@ -389,12 +389,12 @@ zeroPadList numbers =
 -}
 fmtInt : Int -> String
 fmtInt n =
-    thousands (toString n)
-
-
-thousands : String -> String
-thousands str =
-    if String.length str <= 3 then
-        str
-    else
-        (thousands (String.slice 0 -3 str)) ++ "," ++ (String.right 3 str)
+    let
+        -- thousands recursively inserts thousands separators.
+        thousands str =
+            if String.length str <= 3 then
+                str
+            else
+                (thousands (String.slice 0 -3 str)) ++ "," ++ (String.right 3 str)
+    in
+        thousands (toString n)
