@@ -178,60 +178,51 @@ applySession ( model, cmd, sessionMsg ) =
 
 view : Model -> Html Msg
 view model =
+    frame model <|
+        case model.page of
+            Home subModel ->
+                Html.map HomeMsg (Home.view model.session subModel)
+
+            Mailbox subModel ->
+                Html.map MailboxMsg (Mailbox.view model.session subModel)
+
+            Monitor subModel ->
+                Html.map MonitorMsg (Monitor.view model.session subModel)
+
+            Status subModel ->
+                Html.map StatusMsg (Status.view model.session subModel)
+
+
+frame : Model -> Html Msg -> Html Msg
+frame model wrapped =
     div [ id "app" ]
-        [ viewHeader model
-        , page model
-        , viewFooter
-        ]
-
-
-page : Model -> Html Msg
-page model =
-    case model.page of
-        Home subModel ->
-            Html.map HomeMsg (Home.view model.session subModel)
-
-        Mailbox subModel ->
-            Html.map MailboxMsg (Mailbox.view model.session subModel)
-
-        Monitor subModel ->
-            Html.map MonitorMsg (Monitor.view model.session subModel)
-
-        Status subModel ->
-            Html.map StatusMsg (Status.view model.session subModel)
-
-
-viewHeader : Model -> Html Msg
-viewHeader model =
-    header []
-        [ ul [ class "nav", attribute "role" "navigation" ]
-            [ li [] [ a [ Route.href Route.Home ] [ text "Home" ] ]
-            , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
-            , li [] [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
-            , li []
-                [ form [ Events.onSubmit ViewMailbox ]
-                    [ input
-                        [ type_ "text"
-                        , placeholder "mailbox"
-                        , value model.mailboxName
-                        , Events.onInput MailboxNameInput
+        [ header []
+            [ ul [ class "nav", attribute "role" "navigation" ]
+                [ li [] [ a [ Route.href Route.Home ] [ text "Home" ] ]
+                , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
+                , li [] [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
+                , li []
+                    [ form [ Events.onSubmit ViewMailbox ]
+                        [ input
+                            [ type_ "text"
+                            , placeholder "mailbox"
+                            , value model.mailboxName
+                            , Events.onInput MailboxNameInput
+                            ]
+                            []
                         ]
-                        []
                     ]
                 ]
+            , div [] [ text ("Status: " ++ model.session.flash) ]
             ]
-        , div [] [ text ("Status: " ++ model.session.flash) ]
-        ]
-
-
-viewFooter : Html Msg
-viewFooter =
-    footer []
-        [ div [ id "footer" ]
-            [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
-            , text " is an open source projected hosted at "
-            , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
-            , text "."
+        , wrapped
+        , footer []
+            [ div [ id "footer" ]
+                [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
+                , text " is an open source projected hosted at "
+                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
+                , text "."
+                ]
             ]
         ]
 
