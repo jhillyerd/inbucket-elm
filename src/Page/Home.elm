@@ -1,11 +1,10 @@
 module Page.Home exposing (Model, Msg, init, update, view)
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Data.Session as Session exposing (Session)
 
 
--- import Html.Attributes exposing (..)
--- import Html.Events exposing (..)
 -- MODEL --
 
 
@@ -37,4 +36,7 @@ update session msg model =
 
 view : Session -> Model -> Html Msg
 view session model =
-    div [] [ text "This is the home page" ]
+    div [ id "page" ]
+        [ h1 [] [ text "Inbucket" ]
+        , text "This is the home page"
+        ]

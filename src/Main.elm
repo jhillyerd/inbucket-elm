@@ -207,11 +207,11 @@ frame : Model -> Html Msg -> Html Msg
 frame model wrapped =
     div [ id "app" ]
         [ header []
-            [ ul [ class "nav", attribute "role" "navigation" ]
-                [ li [] [ a [ Route.href Route.Home ] [ text "Home" ] ]
-                , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
+            [ ul [ id "navbar", class "navbg", attribute "role" "navigation" ]
+                [ li [ id "navbar-brand" ] [ a [ Route.href Route.Home ] [ text "@ inbucket" ] ]
                 , li [] [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
-                , li []
+                , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
+                , li [ id "navbar-mailbox" ]
                     [ form [ Events.onSubmit ViewMailbox ]
                         [ input
                             [ type_ "text"
@@ -225,6 +225,7 @@ frame model wrapped =
                 ]
             , div [] [ text ("Status: " ++ model.session.flash) ]
             ]
+        , div [ id "navbg" ] [ text "" ]
         , wrapped
         , footer []
             [ div [ id "footer" ]

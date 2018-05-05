@@ -1,10 +1,11 @@
-/** APP */
+/** GLOBAL */
 
 :root {
   --primary-color: #333;
   --low-color: #666;
   --high-color: #337ab7;
   --border-color: #ddd;
+  --placeholder-color: #9f9f9f;
   --selected-color: #eee;
 }
 
@@ -32,19 +33,26 @@ body {
   background-color: #fff;
 }
 
-body, table {
-  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+body, input, table {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.43;
   color: var(--primary-color);
 }
+
+::placeholder {
+  color: var(--placeholder-color);
+  opacity: 1;
+}
+
+/** APP */
 
 #app {
   display: grid;
   justify-content: center;
   grid-gap: 20px;
   grid-template:
-    "head head head" auto
+    "lpad head rpad" auto
     "lpad page rpad" 1fr
     "foot foot foot" auto / minmax(20px, auto) 1fr minmax(20px, auto);
   height: 100vh;
@@ -86,6 +94,61 @@ footer {
 h1 {
   font-size: 30px;
   font-weight: 500;
+}
+
+/** NAV BAR */
+
+#navbar,
+#navbg {
+  height: 50px;
+}
+
+#navbar {
+  display: flex;
+  line-height: 20px;
+  list-style: none;
+  padding: 0;
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.2);
+}
+
+#navbar li {
+  padding: 15px;
+}
+
+#navbar a {
+  color: #9d9d9d;
+  text-decoration: none;
+}
+
+#navbar a:hover {
+  color: #ffffff;
+}
+
+#navbar-brand {
+  font-size: 18px;
+  margin-left: -15px;
+}
+
+#navbar-mailbox {
+  margin-left: auto;
+  padding: 8px 0 !important;
+}
+
+#navbar-mailbox input {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 5px 10px;
+  margin-top: 1px;
+  width: 250px;
+}
+
+#navbg {
+  background-color: #222;
+  background-image: linear-gradient(to bottom, #3c3c3c 0, #222 100%);
+  grid-column: 1 / 4;
+  grid-row: 1;
+  width: 100%;
+  z-index: -1;
 }
 
 /** BUTTONS */
