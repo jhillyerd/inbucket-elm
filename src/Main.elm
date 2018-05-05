@@ -85,19 +85,23 @@ update msg model =
         case msg of
             SetRoute route ->
                 -- Updates broser URL to requested route.
-                ( model, Route.newUrl route, Session.None )
+                ( model, Route.newUrl route, Session.none )
 
             NewRoute route ->
                 -- Responds to new browser URL.
-                setRoute route model
+                if model.session.routing then
+                    setRoute route model
+                else
+                    -- Skip once, but re-enable routing.
+                    ( model, Cmd.none, Session.EnableRouting )
 
             MailboxNameInput name ->
-                ( { model | mailboxName = name }, Cmd.none, Session.None )
+                ( { model | mailboxName = name }, Cmd.none, Session.none )
 
             ViewMailbox ->
                 ( { model | mailboxName = "" }
                 , Route.newUrl (Route.Mailbox model.mailboxName)
-                , Session.None
+                , Session.none
                 )
 
             _ ->
@@ -133,7 +137,7 @@ updatePage msg model =
 
             ( _, _ ) ->
                 -- Disregard messages destined for the wrong page.
-                ( model, Cmd.none, Session.None )
+                ( model, Cmd.none, Session.none )
 
 
 setRoute : Route -> Model -> ( Model, Cmd Msg, Session.Msg )
@@ -145,31 +149,31 @@ setRoute route model =
         Route.Home ->
             ( { model | page = Home Home.init }
             , Cmd.none
-            , Session.None
+            , Session.none
             )
 
         Route.Mailbox name ->
             ( { model | page = Mailbox (Mailbox.init name Nothing) }
             , Cmd.map MailboxMsg (Mailbox.load name)
-            , Session.None
+            , Session.none
             )
 
         Route.Message mailbox id ->
             ( { model | page = Mailbox (Mailbox.init mailbox (Just id)) }
             , Cmd.map MailboxMsg (Mailbox.load mailbox)
-            , Session.None
+            , Session.none
             )
 
         Route.Monitor ->
             ( { model | page = Monitor Monitor.init }
             , Cmd.none
-            , Session.None
+            , Session.none
             )
 
         Route.Status ->
             ( { model | page = Status Status.init }
             , Cmd.map StatusMsg (Status.load)
-            , Session.None
+            , Session.none
             )
 
 

@@ -1,19 +1,23 @@
-module Data.Session exposing (Session, Msg(..), init, update)
+module Data.Session exposing (Session, Msg(..), init, none, update)
 
 
 type alias Session =
-    { flash : String }
+    { flash : String
+    , routing : Bool
+    }
 
 
 type Msg
     = None
     | SetFlash String
     | ClearFlash
+    | DisableRouting
+    | EnableRouting
 
 
 init : Session
 init =
-    Session ""
+    Session "" True
 
 
 update : Msg -> Session -> Session
@@ -27,3 +31,14 @@ update msg session =
 
         ClearFlash ->
             { session | flash = "" }
+
+        DisableRouting ->
+            { session | routing = False }
+
+        EnableRouting ->
+            { session | routing = True }
+
+
+none : Msg
+none =
+    None

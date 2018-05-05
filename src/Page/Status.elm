@@ -99,7 +99,7 @@ update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
     case msg of
         NewMetrics (Ok metrics) ->
-            ( updateMetrics metrics model, Cmd.none, Session.None )
+            ( updateMetrics metrics model, Cmd.none, Session.none )
 
         NewMetrics (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )

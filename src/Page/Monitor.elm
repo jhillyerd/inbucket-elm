@@ -45,7 +45,7 @@ update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
     case msg of
         NewMessage (Ok msg) ->
-            ( { model | messages = msg :: model.messages }, Cmd.none, Session.None )
+            ( { model | messages = msg :: model.messages }, Cmd.none, Session.none )
 
         NewMessage (Err err) ->
             ( model, Cmd.none, Session.SetFlash err )
@@ -53,7 +53,7 @@ update session msg model =
         OpenMessage msg ->
             ( model
             , Route.newUrl (Route.Message msg.mailbox msg.id)
-            , Session.None
+            , Session.none
             )
 
 

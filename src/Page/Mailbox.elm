@@ -57,21 +57,24 @@ update session msg model =
     case msg of
         ClickMessage id ->
             ( { model | selected = Just id }
-            , Route.newUrl (Route.Message model.name id)
-            , Session.None
+            , Cmd.batch
+                [ Route.newUrl (Route.Message model.name id)
+                , getMessage model.name id
+                ]
+            , Session.DisableRouting
             )
 
         ViewMessage id ->
             ( { model | selected = Just id }
             , getMessage model.name id
-            , Session.None
+            , Session.none
             )
 
         DeleteMessage msg ->
             deleteMessage model msg
 
         DeleteMessageResult (Ok _) ->
-            ( model, Cmd.none, Session.None )
+            ( model, Cmd.none, Session.none )
 
         DeleteMessageResult (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
@@ -83,7 +86,7 @@ update session msg model =
             in
                 case model.selected of
                     Nothing ->
-                        ( newModel, Cmd.none, Session.None )
+                        ( newModel, Cmd.none, Session.none )
 
                     Just id ->
                         -- Recurse to select message id.
@@ -93,7 +96,7 @@ update session msg model =
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
 
         NewMessage (Ok msg) ->
-            ( { model | message = Just msg }, Cmd.none, Session.None )
+            ( { model | message = Just msg }, Cmd.none, Session.none )
 
         NewMessage (Err err) ->
             ( model, Cmd.none, Session.SetFlash (HttpUtil.errorString err) )
@@ -125,7 +128,7 @@ deleteMessage model msg =
             , headers = List.filter (\x -> x.id /= msg.id) model.headers
           }
         , cmd
-        , Session.None
+        , Session.none
         )
 
 

@@ -28,7 +28,7 @@ type Msg
 
 update : Session -> Msg -> Model -> ( Model, Cmd Msg, Session.Msg )
 update session msg model =
-    ( model, Cmd.none, Session.None )
+    ( model, Cmd.none, Session.none )
 
 
 
