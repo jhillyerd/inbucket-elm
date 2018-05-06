@@ -9,6 +9,7 @@ import Html.Attributes exposing (class, classList, href, id, placeholder, target
 import Html.Events exposing (..)
 import Http exposing (Error)
 import HttpUtil
+import Ports
 import Route exposing (Route)
 
 
@@ -36,7 +37,10 @@ init name id =
 
 load : String -> Cmd Msg
 load name =
-    getMailbox name
+    Cmd.batch
+        [ Ports.windowTitle (name ++ " - Inbucket")
+        , getMailbox name
+        ]
 
 
 

@@ -7,6 +7,7 @@ import Page.Home as Home
 import Page.Mailbox as Mailbox
 import Page.Monitor as Monitor
 import Page.Status as Status
+import Ports
 import Route exposing (Route)
 import Views.Page as Page exposing (ActivePage(..), frame)
 
@@ -147,7 +148,7 @@ setRoute route model =
 
         Route.Home ->
             ( { model | page = Home Home.init }
-            , Cmd.none
+            , Ports.windowTitle "Inbucket"
             , Session.none
             )
 
@@ -165,13 +166,16 @@ setRoute route model =
 
         Route.Monitor ->
             ( { model | page = Monitor Monitor.init }
-            , Cmd.none
+            , Ports.windowTitle "Inbucket Monitor"
             , Session.none
             )
 
         Route.Status ->
             ( { model | page = Status Status.init }
-            , Cmd.map StatusMsg (Status.load)
+            , Cmd.batch
+                [ Ports.windowTitle "Inbucket Status"
+                , Cmd.map StatusMsg (Status.load)
+                ]
             , Session.none
             )
 
