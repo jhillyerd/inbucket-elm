@@ -53,7 +53,7 @@ routeToString page =
 
 
 
--- PUBLIC HELPERS --
+-- PUBLIC HELPERS
 
 
 href : Route -> Attribute msg

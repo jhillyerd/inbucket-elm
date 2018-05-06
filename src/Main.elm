@@ -2,17 +2,16 @@ module Main exposing (..)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, classList, href, id, placeholder, type_, value)
-import Html.Events as Events
 import Navigation exposing (Location)
 import Page.Home as Home
 import Page.Mailbox as Mailbox
 import Page.Monitor as Monitor
 import Page.Status as Status
 import Route exposing (Route)
+import Views.Page as Page exposing (ActivePage(..), frame)
 
 
--- MODEL --
+-- MODEL
 
 
 type Page
@@ -59,7 +58,7 @@ type Msg
 
 
 
--- SUBSCRIPTIONS --
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
@@ -76,7 +75,7 @@ subscriptions model =
 
 
 
--- UPDATE --
+-- UPDATE
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -183,85 +182,35 @@ applySession ( model, cmd, sessionMsg ) =
 
 
 
--- VIEW --
+-- VIEW
 
 
 view : Model -> Html Msg
 view model =
-    frame model <|
+    let
+        frame =
+            Page.frame ( MailboxNameInput, ViewMailbox, model.mailboxName ) model.session
+    in
         case model.page of
             Home subModel ->
                 Html.map HomeMsg (Home.view model.session subModel)
+                    |> frame Page.Other
 
             Mailbox subModel ->
                 Html.map MailboxMsg (Mailbox.view model.session subModel)
+                    |> frame Page.Other
 
             Monitor subModel ->
                 Html.map MonitorMsg (Monitor.view model.session subModel)
+                    |> frame Page.Monitor
 
             Status subModel ->
                 Html.map StatusMsg (Status.view model.session subModel)
-
-
-frame : Model -> Html Msg -> Html Msg
-frame model wrapped =
-    div [ id "app" ]
-        [ header []
-            [ ul [ id "navbar", class "navbg", attribute "role" "navigation" ]
-                [ li [ id "navbar-brand" ] [ a [ Route.href Route.Home ] [ text "@ inbucket" ] ]
-                , li [ navTabClasses "monitor" model ]
-                    [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
-                , li [ navTabClasses "status" model ]
-                    [ a [ Route.href Route.Status ] [ text "Status" ] ]
-                , li [ id "navbar-mailbox" ]
-                    [ form [ Events.onSubmit ViewMailbox ]
-                        [ input
-                            [ type_ "text"
-                            , placeholder "mailbox"
-                            , value model.mailboxName
-                            , Events.onInput MailboxNameInput
-                            ]
-                            []
-                        ]
-                    ]
-                ]
-            , div [] [ text ("Status: " ++ model.session.flash) ]
-            ]
-        , div [ id "navbg" ] [ text "" ]
-        , wrapped
-        , footer []
-            [ div [ id "footer" ]
-                [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
-                , text " is an open source projected hosted at "
-                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
-                , text "."
-                ]
-            ]
-        ]
-
-
-navTabClasses : String -> Model -> Attribute msg
-navTabClasses page model =
-    let
-        active =
-            case model.page of
-                Home _ ->
-                    "home"
-
-                Mailbox _ ->
-                    "mailbox"
-
-                Monitor _ ->
-                    "monitor"
-
-                Status _ ->
-                    "status"
-    in
-        classList [ ( "navbar-active", active == page ) ]
+                    |> frame Page.Status
 
 
 
--- MAIN --
+-- MAIN
 
 
 main : Program Never Model Msg
