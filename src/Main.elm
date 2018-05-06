@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, href, id, placeholder, type_, value)
+import Html.Attributes exposing (attribute, class, classList, href, id, placeholder, type_, value)
 import Html.Events as Events
 import Navigation exposing (Location)
 import Page.Home as Home
@@ -209,8 +209,10 @@ frame model wrapped =
         [ header []
             [ ul [ id "navbar", class "navbg", attribute "role" "navigation" ]
                 [ li [ id "navbar-brand" ] [ a [ Route.href Route.Home ] [ text "@ inbucket" ] ]
-                , li [] [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
-                , li [] [ a [ Route.href Route.Status ] [ text "Status" ] ]
+                , li [ navTabClasses "monitor" model ]
+                    [ a [ Route.href Route.Monitor ] [ text "Monitor" ] ]
+                , li [ navTabClasses "status" model ]
+                    [ a [ Route.href Route.Status ] [ text "Status" ] ]
                 , li [ id "navbar-mailbox" ]
                     [ form [ Events.onSubmit ViewMailbox ]
                         [ input
@@ -236,6 +238,26 @@ frame model wrapped =
                 ]
             ]
         ]
+
+
+navTabClasses : String -> Model -> Attribute msg
+navTabClasses page model =
+    let
+        active =
+            case model.page of
+                Home _ ->
+                    "home"
+
+                Mailbox _ ->
+                    "mailbox"
+
+                Monitor _ ->
+                    "monitor"
+
+                Status _ ->
+                    "status"
+    in
+        classList [ ( "navbar-active", active == page ) ]
 
 
 

@@ -217,7 +217,7 @@ getMetrics =
 view : Session -> Model -> Html Msg
 view session model =
     div [ id "page" ]
-        [ h1 [] [ text "Inbucket Status" ]
+        [ h1 [] [ text "Status" ]
         , case model.metrics of
             Nothing ->
                 div [] [ text "Loading metrics..." ]

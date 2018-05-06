@@ -64,7 +64,7 @@ update session msg model =
 view : Session -> Model -> Html Msg
 view session model =
     div [ id "page" ]
-        [ h1 [] [ text "Inbucket Monitor" ]
+        [ h1 [] [ text "Monitor" ]
         , p [] [ text "Messages will be listed here shortly after delivery." ]
         , table [ id "monitor" ]
             [ thead []

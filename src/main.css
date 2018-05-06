@@ -115,6 +115,14 @@ h1 {
   padding: 15px;
 }
 
+.navbar-active {
+  background-color: #080808;
+}
+
+.navbar-active a {
+  color: #ffffff !important;
+}
+
 #navbar a {
   color: #9d9d9d;
   text-decoration: none;
