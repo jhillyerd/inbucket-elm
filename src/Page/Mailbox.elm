@@ -71,7 +71,7 @@ update session msg model =
         ViewMessage id ->
             ( { model | selected = Just id }
             , getMessage model.name id
-            , Session.none
+            , Session.AddRecent model.name
             )
 
         DeleteMessage msg ->
@@ -90,7 +90,7 @@ update session msg model =
             in
                 case model.selected of
                     Nothing ->
-                        ( newModel, Cmd.none, Session.none )
+                        ( newModel, Cmd.none, Session.AddRecent model.name )
 
                     Just id ->
                         -- Recurse to select message id.

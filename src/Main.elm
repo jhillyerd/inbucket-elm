@@ -1,6 +1,7 @@
 module Main exposing (..)
 
-import Data.Session as Session exposing (Session)
+import Data.Session as Session exposing (Session, decoder)
+import Json.Decode as Decode exposing (Value)
 import Html exposing (..)
 import Navigation exposing (Location)
 import Page.Home as Home
@@ -29,11 +30,11 @@ type alias Model =
     }
 
 
-init : Location -> ( Model, Cmd Msg )
-init location =
+init : Value -> Location -> ( Model, Cmd Msg )
+init sessionValue location =
     let
         session =
-            Session.init
+            Session.init (Session.decodeValueWithDefault sessionValue)
 
         model =
             { page = Home Home.init
@@ -50,6 +51,7 @@ init location =
 type Msg
     = SetRoute Route
     | NewRoute Route
+    | UpdateSession (Result String Session.Persistent)
     | MailboxNameInput String
     | ViewMailbox
     | HomeMsg Home.Msg
@@ -64,7 +66,20 @@ type Msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.page of
+    Sub.batch
+        [ pageSubscriptions model.page
+        , Sub.map UpdateSession sessionChange
+        ]
+
+
+sessionChange : Sub (Result String Session.Persistent)
+sessionChange =
+    Ports.onSessionChange (Decode.decodeValue Session.decoder)
+
+
+pageSubscriptions : Page -> Sub Msg
+pageSubscriptions page =
+    case page of
         Monitor subModel ->
             Sub.map MonitorMsg (Monitor.subscriptions subModel)
 
@@ -94,6 +109,23 @@ update msg model =
                 else
                     -- Skip once, but re-enable routing.
                     ( model, Cmd.none, Session.EnableRouting )
+
+            UpdateSession (Ok persistent) ->
+                let
+                    session =
+                        model.session
+                in
+                    ( { model | session = { session | persistent = persistent } }
+                    , Cmd.none
+                    , Session.none
+                    )
+
+            UpdateSession (Err error) ->
+                let
+                    _ =
+                        Debug.log "Error decoding session" error
+                in
+                    ( model, Cmd.none, Session.none )
 
             MailboxNameInput name ->
                 ( { model | mailboxName = name }, Cmd.none, Session.none )
@@ -182,7 +214,20 @@ setRoute route model =
 
 applySession : ( Model, Cmd Msg, Session.Msg ) -> ( Model, Cmd Msg )
 applySession ( model, cmd, sessionMsg ) =
-    ( { model | session = Session.update sessionMsg model.session }, cmd )
+    let
+        session =
+            Session.update sessionMsg model.session
+
+        newModel =
+            { model | session = session }
+    in
+        if session.persistent == model.session.persistent then
+            -- No change
+            ( newModel, cmd )
+        else
+            ( newModel
+            , Cmd.batch [ cmd, Ports.storeSession session.persistent ]
+            )
 
 
 
@@ -217,9 +262,9 @@ view model =
 -- MAIN
 
 
-main : Program Never Model Msg
+main : Program Value Model Msg
 main =
-    Navigation.program (Route.fromLocation >> NewRoute)
+    Navigation.programWithFlags (Route.fromLocation >> NewRoute)
         { init = init
         , view = view
         , update = update

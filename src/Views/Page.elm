@@ -41,7 +41,7 @@ frame ( mailboxInput, viewMailbox, mailboxValue ) session page content =
             [ div [ id "footer" ]
                 [ a [ href "https://www.inbucket.org" ] [ text "Inbucket" ]
                 , text " is an open source projected hosted at "
-                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "Github" ]
+                , a [ href "https://github.com/jhillyerd/inbucket" ] [ text "GitHub" ]
                 , text "."
                 ]
             ]
@@ -56,7 +56,7 @@ navbarLink page route linkContent =
 
 isActive : ActivePage -> Route -> Bool
 isActive page route =
-    case (Debug.log "isActive" ( page, route )) of
+    case ( page, route ) of
         ( Monitor, Route.Monitor ) ->
             True
 
