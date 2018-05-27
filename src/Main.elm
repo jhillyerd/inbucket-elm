@@ -53,7 +53,7 @@ type Msg
     | NewRoute Route
     | UpdateSession (Result String Session.Persistent)
     | MailboxNameInput String
-    | ViewMailbox
+    | ViewMailbox String
     | HomeMsg Home.Msg
     | MailboxMsg Mailbox.Msg
     | MonitorMsg Monitor.Msg
@@ -130,9 +130,9 @@ update msg model =
             MailboxNameInput name ->
                 ( { model | mailboxName = name }, Cmd.none, Session.none )
 
-            ViewMailbox ->
+            ViewMailbox name ->
                 ( { model | mailboxName = "" }
-                , Route.newUrl (Route.Mailbox model.mailboxName)
+                , Route.newUrl (Route.Mailbox name)
                 , Session.none
                 )
 
@@ -237,8 +237,24 @@ applySession ( model, cmd, sessionMsg ) =
 view : Model -> Html Msg
 view model =
     let
+        mailbox =
+            case model.page of
+                Mailbox subModel ->
+                    subModel.name
+
+                _ ->
+                    ""
+
+        controls =
+            { viewMailbox = ViewMailbox
+            , mailboxOnInput = MailboxNameInput
+            , mailboxValue = model.mailboxName
+            , recentOptions = model.session.persistent.recentMailboxes
+            , recentSelected = mailbox
+            }
+
         frame =
-            Page.frame ( MailboxNameInput, ViewMailbox, model.mailboxName ) model.session
+            Page.frame controls model.session
     in
         case model.page of
             Home subModel ->

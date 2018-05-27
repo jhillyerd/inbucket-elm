@@ -2,7 +2,18 @@ module Views.Page exposing (ActivePage(..), frame)
 
 import Data.Session as Session exposing (Session)
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, classList, href, id, placeholder, type_, value)
+import Html.Attributes
+    exposing
+        ( attribute
+        , class
+        , classList
+        , href
+        , id
+        , placeholder
+        , type_
+        , selected
+        , value
+        )
 import Html.Events as Events
 import Route exposing (Route)
 
@@ -13,21 +24,31 @@ type ActivePage
     | Status
 
 
-frame : ( String -> msg, msg, String ) -> Session -> ActivePage -> Html msg -> Html msg
-frame ( mailboxInput, viewMailbox, mailboxValue ) session page content =
+type alias FrameControls msg =
+    { viewMailbox : String -> msg
+    , mailboxOnInput : String -> msg
+    , mailboxValue : String
+    , recentOptions : List String
+    , recentSelected : String
+    }
+
+
+frame : FrameControls msg -> Session -> ActivePage -> Html msg -> Html msg
+frame controls session page content =
     div [ id "app" ]
         [ header []
             [ ul [ id "navbar", class "navbg", attribute "role" "navigation" ]
                 [ li [ id "navbar-brand" ] [ a [ Route.href Route.Home ] [ text "@ inbucket" ] ]
                 , navbarLink page Route.Monitor [ text "Monitor" ]
                 , navbarLink page Route.Status [ text "Status" ]
+                , li [ id "navbar-recent" ] [ recentSelect controls ]
                 , li [ id "navbar-mailbox" ]
-                    [ form [ Events.onSubmit viewMailbox ]
+                    [ form [ Events.onSubmit (controls.viewMailbox controls.mailboxValue) ]
                         [ input
                             [ type_ "text"
                             , placeholder "mailbox"
-                            , value mailboxValue
-                            , Events.onInput mailboxInput
+                            , value controls.mailboxValue
+                            , Events.onInput controls.mailboxOnInput
                             ]
                             []
                         ]
@@ -46,6 +67,34 @@ frame ( mailboxInput, viewMailbox, mailboxValue ) session page content =
                 ]
             ]
         ]
+
+
+{-| Renders list of recent mailboxes, selecting the currently active mailbox.
+-}
+recentSelect : FrameControls msg -> Html msg
+recentSelect controls =
+    let
+        titleOption =
+            option
+                [ value ""
+                , selected ("" == controls.recentSelected)
+                ]
+                [ text "Recent Mailboxes" ]
+
+        recentOption mailbox =
+            option
+                [ value mailbox
+                , selected (mailbox == controls.recentSelected)
+                ]
+                [ text mailbox ]
+    in
+        form []
+            [ select
+                [ value controls.recentSelected
+                , Events.onInput controls.viewMailbox
+                ]
+                (titleOption :: List.map recentOption controls.recentOptions)
+            ]
 
 
 navbarLink : ActivePage -> Route -> List (Html a) -> Html a
