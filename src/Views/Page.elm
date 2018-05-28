@@ -20,6 +20,7 @@ import Route exposing (Route)
 
 type ActivePage
     = Other
+    | Mailbox
     | Monitor
     | Status
 
@@ -29,7 +30,7 @@ type alias FrameControls msg =
     , mailboxOnInput : String -> msg
     , mailboxValue : String
     , recentOptions : List String
-    , recentSelected : String
+    , recentActive : String
     }
 
 
@@ -37,11 +38,11 @@ frame : FrameControls msg -> Session -> ActivePage -> Html msg -> Html msg
 frame controls session page content =
     div [ id "app" ]
         [ header []
-            [ ul [ id "navbar", class "navbg", attribute "role" "navigation" ]
+            [ ul [ class "navbar", attribute "role" "navigation" ]
                 [ li [ id "navbar-brand" ] [ a [ Route.href Route.Home ] [ text "@ inbucket" ] ]
                 , navbarLink page Route.Monitor [ text "Monitor" ]
                 , navbarLink page Route.Status [ text "Status" ]
-                , li [ id "navbar-recent" ] [ recentSelect controls ]
+                , navbarRecent page controls
                 , li [ id "navbar-mailbox" ]
                     [ form [ Events.onSubmit (controls.viewMailbox controls.mailboxValue) ]
                         [ input
@@ -69,38 +70,44 @@ frame controls session page content =
         ]
 
 
-{-| Renders list of recent mailboxes, selecting the currently active mailbox.
--}
-recentSelect : FrameControls msg -> Html msg
-recentSelect controls =
-    let
-        titleOption =
-            option
-                [ value ""
-                , selected ("" == controls.recentSelected)
-                ]
-                [ text "Recent Mailboxes" ]
-
-        recentOption mailbox =
-            option
-                [ value mailbox
-                , selected (mailbox == controls.recentSelected)
-                ]
-                [ text mailbox ]
-    in
-        form []
-            [ select
-                [ value controls.recentSelected
-                , Events.onInput controls.viewMailbox
-                ]
-                (titleOption :: List.map recentOption controls.recentOptions)
-            ]
-
-
 navbarLink : ActivePage -> Route -> List (Html a) -> Html a
 navbarLink page route linkContent =
     li [ classList [ ( "navbar-active", isActive page route ) ] ]
         [ a [ Route.href route ] linkContent ]
+
+
+{-| Renders list of recent mailboxes, selecting the currently active mailbox.
+-}
+navbarRecent : ActivePage -> FrameControls msg -> Html msg
+navbarRecent page controls =
+    let
+        recentItemLink mailbox =
+            a [ Route.href (Route.Mailbox mailbox) ] [ text mailbox ]
+
+        active =
+            page == Mailbox
+
+        -- Navbar tab title, is current mailbox when active.
+        title =
+            if active then
+                controls.recentActive
+            else
+                "Recent Mailboxes"
+
+        -- Items to show in recent list, doesn't include active mailbox.
+        items =
+            if active then
+                List.tail controls.recentOptions |> Maybe.withDefault []
+            else
+                controls.recentOptions
+    in
+        li
+            [ id "navbar-recent"
+            , classList [ ( "navbar-dropdown", True ), ( "navbar-active", active ) ]
+            ]
+            [ span [] [ text title ]
+            , div [ class "navbar-dropdown-content" ] (List.map recentItemLink items)
+            ]
 
 
 isActive : ActivePage -> Route -> Bool

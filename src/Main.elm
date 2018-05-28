@@ -250,7 +250,7 @@ view model =
             , mailboxOnInput = MailboxNameInput
             , mailboxValue = model.mailboxName
             , recentOptions = model.session.persistent.recentMailboxes
-            , recentSelected = mailbox
+            , recentActive = mailbox
             }
 
         frame =
@@ -263,7 +263,7 @@ view model =
 
             Mailbox subModel ->
                 Html.map MailboxMsg (Mailbox.view model.session subModel)
-                    |> frame Page.Other
+                    |> frame Page.Mailbox
 
             Monitor subModel ->
                 Html.map MonitorMsg (Monitor.view model.session subModel)
